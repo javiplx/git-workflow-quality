@@ -204,8 +204,11 @@ for branch in branchnames.keys() : # + otherbranches.keys() :
 def dump ( c , pending , fd=sys.stdout ) :
     fd.write( "// BEGIN %s BRANCH\n" % c.branch )
     fd.write( '%s.checkout();\n' % c.branch )
+    first = True
     while c.child :
-        fd.write( 'gitgraph.commit({sha1:"%s"});\n' % c.sha )
+        if c.forks or c.parents or first :
+            first = False
+            fd.write( 'gitgraph.commit({sha1:"%s"});\n' % c.sha )
         for sha in c.forks :
             fd.write( 'var %s = gitgraph.branch("%s");\n' % ( commits[sha].branch , commits[sha].branch ) )
             pending.append( commits[sha] )
