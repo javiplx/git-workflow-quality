@@ -39,7 +39,7 @@ class commit :
     def set_branch ( self , branch ) :
         if self.branch :
             raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
-        self.branch = branch
+        self.branch = branch.replace('/', '_slash_' )
 
     def set_child ( self , sha ) :
         if self.child :
