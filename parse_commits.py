@@ -205,7 +205,7 @@ fd = open("messages.list")
 line = fd.readline()
 while line[:-1] :
     sha , author , committer , message = line[:-1].split(None, 3)
-    commits[sha].message = message
+    commits[sha].message = message.replace('"', '&quot;' )
     line = fd.readline()
 fd.close()
 
