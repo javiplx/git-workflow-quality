@@ -171,7 +171,7 @@ for branch in branchnames.keys() :
 
 for branch in otherbranches.keys() :
     print "branch", branch
-    c = commits[otherbranches.pop(branch)]
+    c = commits[otherbranches[branch]]
     while c :
         if c.branch != branch :
             break
@@ -183,6 +183,21 @@ for branch in otherbranches.keys() :
             print "%s %s" % ( c.sha , " ".join(c.parents) )
             #print "%s %s : %s" % ( c.sha , " ".join(c.parents) , " ".join(c.forks) )
         c = commits[c.parent.sha]
+    print
+
+
+branchnames = dict([ (branches[key],key) for key in branches ])
+for branch in branchnames.keys() : # + otherbranches.keys() :
+    print "branch", branch
+    for c in commits.values() :
+        if c.branch != branch : continue
+        if not c.parent :
+            print "INITIAL", c.sha
+        elif commits[c.parent.sha].branch != c.branch :
+            print "FORK   ", c.sha
+            print "   from", commits[c.parent.sha].branch , commits[c.parent.sha].sha
+        if not c.child :
+            print "FINAL  ", c.sha
     print
 
 
