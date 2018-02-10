@@ -201,11 +201,22 @@ for branch in branchnames.keys() : # + otherbranches.keys() :
     print
 
 
+branch_mapping = {}
 fd = open("messages.list")
 line = fd.readline()
 while line[:-1] :
     sha , author , committer , message = line[:-1].split(None, 3)
     commits[sha].message = message.replace('"', '&quot;' )
+    idx = message.find( "Merge branch '" )
+    if idx != -1 :
+        branch_name = message[idx+14:]
+        idx = branch_name.find( "'" )
+        branch_name = branch_name[:idx]
+        merged_commit = commits[sha].parents
+        if merged_commit :
+            merged_branch = commits[merged_commit[0]].branch
+            if merged_branch.startswith('removed_') :
+                branch_mapping[merged_branch] = branch_name
     line = fd.readline()
 fd.close()
 
@@ -230,7 +241,7 @@ def dump ( c , pending , fd=sys.stdout ) :
                 fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
         for sha in c.forks :
             if not commits[sha].branch in shown_branches :
-                fd.write( 'var %s = gitgraph.branch("%s");\n' % ( commits[sha].branch , commits[sha].branch ) )
+                fd.write( 'var %s = gitgraph.branch("%s");\n' % ( commits[sha].branch , branch_mapping.get(commits[sha].branch, commits[sha].branch) ) )
                 shown_branches.append( commits[sha].branch )
             pending.append( commits[sha] )
         if c.forks :
