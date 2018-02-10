@@ -34,6 +34,7 @@ class commit :
                 for parent in self.parents :
                     merges[parent] = True
         self.branch = None
+        self.forks = []
 
     def set_branch ( self , branch ) :
         if self.branch :
@@ -43,8 +44,8 @@ class commit :
     def __str__ ( self ) :
         parents = " ".join(self.parents)
         if self.parent :
-            return "%s %s %s" % ( self.sha , self.parent.sha , parents )
-        return "%s None %s" % ( self.sha , parents )
+            return "%s %s %s | %s" % ( self.sha , self.parent.sha , parents , " ".join(self.forks) )
+        return "%s None %s | %s" % ( self.sha , parents , " ".join(self.forks) )
 
 
 fd = sys.stdin
@@ -90,6 +91,12 @@ for sha in merges :
             c = commits[c.parent.sha]
 
 
+for c in commits.values() :
+    if not c.parents :
+        continue
+    for sha in c.parents :
+        commits[sha].forks.append( c.sha )
+
 
 branchnames = dict([ (branches[key],key) for key in branches ])
 
@@ -105,9 +112,9 @@ for branch in 'master' , 'develop' :
         if show_main :
             if c.parents :
                 for parent in c.parents :
-                    print "%s %s" % ( c.sha , commits[parents].branch )
+                    print "%s %s | %s" % ( c.sha , commits[parents].branch , " ".join(c.forks) )
             else :
-                print "%s %s" % ( c.sha , " ".join(c.parents) )
+                print "%s %s : %s" % ( c.sha , " ".join(c.parents) , " ".join(c.forks) )
         c = commits[c.parent.sha]
     if show_main : print
 
@@ -119,9 +126,9 @@ for branch in branchnames.keys() :
             break
         if c.parents :
             for parent in c.parents :
-                print "%s %s" % ( c.sha , commits[parent].branch )
+                print "%s %s | %s" % ( c.sha , commits[parent].branch , " ".join(c.forks) )
         else :
-            print "%s %s" % ( c.sha , " ".join(c.parents) )
+            print "%s %s : %s" % ( c.sha , " ".join(c.parents) , " ".join(c.forks) )
         c = commits[c.parent.sha]
     print
 
@@ -133,9 +140,9 @@ for branch in otherbranches.keys() :
             break
         if c.parents :
             for parent in c.parents :
-                print "%s %s" % ( c.sha , commits[parent].branch )
+                print "%s %s | %s" % ( c.sha , commits[parent].branch , " ".join(c.forks) )
         else :
-            print "%s %s" % ( c.sha , " ".join(c.parents) )
+            print "%s %s : %s" % ( c.sha , " ".join(c.parents) , " ".join(c.forks) )
         c = commits[c.parent.sha]
     print
 
