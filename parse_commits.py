@@ -15,6 +15,7 @@ fd.close()
 
 
 commits = {}
+merges = {}
 
 class commit :
 
@@ -28,6 +29,8 @@ class commit :
             self.parent = commits[line[3]]
             if len(line) > 4 :
                 self.parents = line[4].split()
+                for parent in self.parents :
+                    merges[parent] = True
         self.branch = None
 
     def set_branch ( self , branch ) :
@@ -95,4 +98,29 @@ for branch in branchnames.keys() :
         sha = c.parent.sha
         c = commits[sha]
     print
+
+
+count = 0
+for sha in merges :
+    if found.has_key(sha) :
+        if not commits[sha].branch :
+            raise Exception( "found commit without branch : %s" % commits[sha] )
+    else :
+        count += 1
+        branch = "removed_%s" % count
+        print "branch", branch
+        c = commits[sha]
+        while c :
+            if not c.parent or found.has_key(c.sha) :
+                break
+            parents = " ".join(c.parents)
+            if commits.has_key(parents) :
+                print "%s %s" % ( c.sha , commits[parents].branch or parents )
+            else :
+                print "%s %s" % ( c.sha , parents )
+            c.set_branch(branch)
+            found[c.sha] = True
+            sha = c.parent.sha
+            c = commits[sha]
+        print
 
