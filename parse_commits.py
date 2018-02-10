@@ -29,6 +29,8 @@ class commit :
             self.parent = commits[line[3]]
             if len(line) > 4 :
                 self.parents = line[4].split()
+                if len(self.parents) > 1 :
+                    raise Exception( "Octopus merges on %s from %s not handled" % ( self.sha , ", ".join(self.parents) ) )
                 for parent in self.parents :
                     merges[parent] = True
         self.branch = None
