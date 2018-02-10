@@ -209,23 +209,32 @@ while line[:-1] :
     line = fd.readline()
 fd.close()
 
+
+shown_branches = [ 'master' ]
 def dump ( c , pending , fd=sys.stdout ) :
     fd.write( "// BEGIN %s BRANCH\n" % c.branch )
     fd.write( '%s.checkout();\n' % c.branch )
     first = True
     while c.child :
-        if c.forks or c.parents or first :
-            first = False
-            fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
+        if c.parents :
+            sha = c.parents[0]
+            if commits[sha].branch in shown_branches :
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s | %s"});\n' % ( commits[sha].branch , c.branch , c.sha , commits[sha].branch , c.message ) )
+            else :
+                fd.write( "// MERGE COMMIT : %s\n" % c.parents )
+                fd.write( "//       %s : %s\n" % ( commits[sha].branch , commits[sha] ) )
+                fd.write( "// END   %s BRANCH\n\n" % c.branch )
+                return
+        elif c.forks or first :
+                first = False
+                fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
         for sha in c.forks :
-            fd.write( 'var %s = gitgraph.branch("%s");\n' % ( commits[sha].branch , commits[sha].branch ) )
+            if not commits[sha].branch in shown_branches :
+                fd.write( 'var %s = gitgraph.branch("%s");\n' % ( commits[sha].branch , commits[sha].branch ) )
+                shown_branches.append( commits[sha].branch )
             pending.append( commits[sha] )
         if c.forks :
             fd.write( '%s.checkout();\n' % c.branch )
-        if c.parents :
-            fd.write( "// MERGE COMMIT\n" )
-            fd.write( "// END   %s BRANCH\n\n" % c.branch )
-            return
         c = commits[c.child]
     fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
     fd.write( "// FINAL COMMIT\n" )
