@@ -201,20 +201,74 @@ for branch in branchnames.keys() : # + otherbranches.keys() :
     print
 
 
-def dump ( c , pending ) :
+def dump ( c , pending , fd=sys.stdout ) :
+    fd.write( "// BEGIN %s BRANCH\n" % c.branch )
+    fd.write( '%s.checkout();\n' % c.branch )
     while c.child :
-        print c.branch, c.sha , c.child
+        fd.write( 'gitgraph.commit({sha1:"%s"});\n' % c.sha )
         for sha in c.forks :
-            print "create branch %s" % commits[sha].branch
+            fd.write( 'var %s = gitgraph.branch("%s");\n' % ( commits[sha].branch , commits[sha].branch ) )
             pending.append( commits[sha] )
+        if c.forks :
+            fd.write( '%s.checkout();\n' % c.branch )
         if c.parents :
-            print "\tMERGE COMMIT"
+            fd.write( "// MERGE COMMIT\n" )
+            fd.write( "// END   %s BRANCH\n\n" % c.branch )
             return
         c = commits[c.child]
-    print c.branch, c.sha
-    print "\t%s FINAL COMMIT" % c.branch
+    fd.write( 'gitgraph.commit({sha1:"%s"});\n' % c.sha )
+    fd.write( "// FINAL COMMIT\n" )
+    fd.write( "// END   %s BRANCH\n\n" % c.branch )
+
+fd = open( "commits.js" , 'w' )
+
+fd.write( """
+var myTemplateConfig = {
+  colors: [ "#9993FF", "#47E8D4", "#6BDB52", "#F85BB5", "#FFA657", "#F85BB5" ],
+  branch: {
+    lineWidth: 2,
+    spacingX: 40,
+    showLabel: true, // display branch names on graph
+    labelFont: "normal 10pt Arial",
+    labelRotation: 0
+  },
+  commit: {
+    spacingY: -30,
+    dot: {
+      size: 6,
+      lineDash: [2]
+    },
+    message: {
+      font: "normal 12pt Arial"
+    },
+    tooltipHTMLFormatter: function (commit) {
+      return "<b>" + commit.sha1 + "</b>" + ": " + commit.message;
+    }
+  },
+  arrow: {
+    size: 6,
+    offset: 1
+  }
+};
+
+var myTemplate = new GitGraph.Template(myTemplateConfig);
+
+var config = {
+  template: myTemplate, // "blackarrow",
+  reverseArrow: false,
+  orientation: "horizontal",
+  mode: "compact"
+};
+
+var gitgraph = new GitGraph(config);
+
+var %s = gitgraph.branch("%s");
+
+""" % ( origins[0].branch , origins[0].branch ) )
 
 while origins :
     commit = origins.pop(0)
-    dump(commit, origins)
+    dump(commit, origins, fd)
+
+fd.close()
 
