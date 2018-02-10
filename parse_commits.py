@@ -201,6 +201,14 @@ for branch in branchnames.keys() : # + otherbranches.keys() :
     print
 
 
+fd = open("messages.list")
+line = fd.readline()
+while line[:-1] :
+    sha , author , committer , message = line[:-1].split(None, 3)
+    commits[sha].message = message
+    line = fd.readline()
+fd.close()
+
 def dump ( c , pending , fd=sys.stdout ) :
     fd.write( "// BEGIN %s BRANCH\n" % c.branch )
     fd.write( '%s.checkout();\n' % c.branch )
@@ -208,7 +216,7 @@ def dump ( c , pending , fd=sys.stdout ) :
     while c.child :
         if c.forks or c.parents or first :
             first = False
-            fd.write( 'gitgraph.commit({sha1:"%s"});\n' % c.sha )
+            fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
         for sha in c.forks :
             fd.write( 'var %s = gitgraph.branch("%s");\n' % ( commits[sha].branch , commits[sha].branch ) )
             pending.append( commits[sha] )
@@ -219,7 +227,7 @@ def dump ( c , pending , fd=sys.stdout ) :
             fd.write( "// END   %s BRANCH\n\n" % c.branch )
             return
         c = commits[c.child]
-    fd.write( 'gitgraph.commit({sha1:"%s"});\n' % c.sha )
+    fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
     fd.write( "// FINAL COMMIT\n" )
     fd.write( "// END   %s BRANCH\n\n" % c.branch )
 
