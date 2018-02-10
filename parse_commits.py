@@ -57,9 +57,6 @@ fd.close()
 # Iterate over all branches showing the life line of each one. The last one listed is the first one in history
 show_main = False
 
-# Once a commit is "assigned" to a branch, we add to this list to stop assignation to remaining branches
-found = {}
-
 branchnames = dict([ (branches[key],key) for key in branches ])
 
 for branch in 'master' , 'develop' :
@@ -67,7 +64,7 @@ for branch in 'master' , 'develop' :
     sha = branchnames.pop(branch)
     c = commits[sha]
     while c :
-        if not c.parent or found.has_key(c.sha) :
+        if not c.parent or c.branch :
             break
         if show_main :
             parents = " ".join(c.parents)
@@ -76,7 +73,6 @@ for branch in 'master' , 'develop' :
             else :
                 print "%s %s" % ( c.sha , parents )
         c.set_branch(branch)
-        found[c.sha] = True
         sha = c.parent.sha
         c = commits[sha]
     if show_main : print
@@ -86,7 +82,7 @@ for branch in branchnames.keys() :
     sha = branchnames.pop(branch)
     c = commits[sha]
     while c :
-        if not c.parent or found.has_key(c.sha) :
+        if not c.parent or c.branch :
             break
         parents = " ".join(c.parents)
         if commits.has_key(parents) :
@@ -94,7 +90,6 @@ for branch in branchnames.keys() :
         else :
             print "%s %s" % ( c.sha , parents )
         c.set_branch(branch)
-        found[c.sha] = True
         sha = c.parent.sha
         c = commits[sha]
     print
@@ -102,16 +97,13 @@ for branch in branchnames.keys() :
 
 count = 0
 for sha in merges :
-    if found.has_key(sha) :
-        if not commits[sha].branch :
-            raise Exception( "found commit without branch : %s" % commits[sha] )
-    else :
+    if not commits[sha].branch :
         count += 1
         branch = "removed_%s" % count
         print "branch", branch
         c = commits[sha]
         while c :
-            if not c.parent or found.has_key(c.sha) :
+            if not c.parent or c.branch :
                 break
             parents = " ".join(c.parents)
             if commits.has_key(parents) :
@@ -119,7 +111,6 @@ for sha in merges :
             else :
                 print "%s %s" % ( c.sha , parents )
             c.set_branch(branch)
-            found[c.sha] = True
             sha = c.parent.sha
             c = commits[sha]
         print
