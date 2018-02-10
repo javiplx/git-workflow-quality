@@ -101,11 +101,11 @@ for branch in 'master' , 'develop' :
         if c.branch != branch :
             break
         if show_main :
-            parents = " ".join(c.parents)
-            if commits.has_key(parents) :
-                print "%s %s" % ( c.sha , commits[parents].branch or parents )
+            if c.parents :
+                for parent in c.parents :
+                    print "%s %s" % ( c.sha , commits[parents].branch )
             else :
-                print "%s %s" % ( c.sha , parents )
+                print "%s %s" % ( c.sha , " ".join(c.parents) )
         c = commits[c.parent.sha]
     if show_main : print
 
@@ -115,11 +115,11 @@ for branch in branchnames.keys() :
     while c :
         if c.branch != branch :
             break
-        parents = " ".join(c.parents)
-        if commits.has_key(parents) :
-            print "%s %s" % ( c.sha , commits[parents].branch or parents )
+        if c.parents :
+            for parent in c.parents :
+                print "%s %s" % ( c.sha , commits[parent].branch )
         else :
-            print "%s %s" % ( c.sha , parents )
+            print "%s %s" % ( c.sha , " ".join(c.parents) )
         c = commits[c.parent.sha]
     print
 
@@ -129,11 +129,11 @@ for branch in otherbranches.keys() :
     while c :
         if c.branch != branch :
             break
-        parents = " ".join(c.parents)
-        if commits.has_key(parents) :
-            print "%s %s" % ( c.sha , commits[parents].branch or parents )
+        if c.parents :
+            for parent in c.parents :
+                print "%s %s" % ( c.sha , commits[parent].branch )
         else :
-            print "%s %s" % ( c.sha , parents )
+            print "%s %s" % ( c.sha , " ".join(c.parents) )
         c = commits[c.parent.sha]
     print
 
