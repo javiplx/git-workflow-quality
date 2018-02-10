@@ -201,9 +201,20 @@ for branch in branchnames.keys() : # + otherbranches.keys() :
     print
 
 
-for c in origins :
+def dump ( c , pending ) :
     while c.child :
         print c.branch, c.sha , c.child
+        for sha in c.forks :
+            print "create branch %s" % commits[sha].branch
+            pending.append( commits[sha] )
+        if c.parents :
+            print "\tMERGE COMMIT"
+            return
         c = commits[c.child]
-    print c.branch, c.sha , "FINAL COMMIT"
+    print c.branch, c.sha
+    print "\t%s FINAL COMMIT" % c.branch
+
+while origins :
+    commit = origins.pop(0)
+    dump(commit, origins)
 
