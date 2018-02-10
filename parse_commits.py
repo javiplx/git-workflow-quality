@@ -17,6 +17,7 @@ fd.close()
 commits = {}
 
 class commit :
+
     def __init__ ( self , line ) :
         self.sha = line[0]
         self.author_date = line[1]
@@ -27,6 +28,12 @@ class commit :
             self.parent = commits[line[3]]
             if len(line) > 4 :
                 self.parents = line[4].split()
+        self.branch = None
+
+    def set_branch ( self , branch ) :
+        if self.branch :
+            raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
+        self.branch = branch
 
     def __str__ ( self ) :
         parents = " ".join(self.parents)
@@ -59,7 +66,13 @@ for branch in 'master' , 'develop' :
     while c :
         if not c.parent or found.has_key(c.sha) :
             break
-        if show_main : print "%s %s" % ( c.sha , " ".join(c.parents) )
+        if show_main :
+            parents = " ".join(c.parents)
+            if commits.has_key(parents) :
+                print "%s %s" % ( c.sha , commits[parents].branch or parents )
+            else :
+                print "%s %s" % ( c.sha , parents )
+        c.set_branch(branch)
         found[c.sha] = True
         sha = c.parent.sha
         c = commits[sha]
@@ -72,7 +85,12 @@ for branch in branchnames.keys() :
     while c :
         if not c.parent or found.has_key(c.sha) :
             break
-        print "%s %s" % ( c.sha , " ".join(c.parents) )
+        parents = " ".join(c.parents)
+        if commits.has_key(parents) :
+            print "%s %s" % ( c.sha , commits[parents].branch or parents )
+        else :
+            print "%s %s" % ( c.sha , parents )
+        c.set_branch(branch)
         found[c.sha] = True
         sha = c.parent.sha
         c = commits[sha]
