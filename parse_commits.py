@@ -54,17 +54,51 @@ while line[:-1] :
 fd.close()
 
 
-# Iterate over all branches showing the life line of each one. The last one listed is the first one in history
-show_main = False
-
 branchnames = dict([ (branches[key],key) for key in branches ])
 
 for branch in 'master' , 'develop' :
-    if show_main : print "branch", branch
-    sha = branchnames.pop(branch)
-    c = commits[sha]
+    c = commits[branchnames.pop(branch)]
     while c :
         if not c.parent or c.branch :
+            break
+        c.set_branch(branch)
+        c = commits[c.parent.sha]
+
+for branch in branchnames.keys() :
+    c = commits[branchnames.pop(branch)]
+    while c :
+        if not c.parent or c.branch :
+            break
+        c.set_branch(branch)
+        c = commits[c.parent.sha]
+
+
+otherbranches = {}
+count = 0
+for sha in merges :
+    if not commits[sha].branch :
+        count += 1
+        branch = "removed_%s" % count
+        otherbranches[branch] = sha
+        c = commits[sha]
+        while c :
+            if not c.parent or c.branch :
+                break
+            c.set_branch(branch)
+            c = commits[c.parent.sha]
+
+
+
+branchnames = dict([ (branches[key],key) for key in branches ])
+
+# Iterate over all branches showing the life line of each one. The last one listed is the first one in history
+show_main = False
+
+for branch in 'master' , 'develop' :
+    if show_main : print "branch", branch
+    c = commits[branchnames.pop(branch)]
+    while c :
+        if c.branch != branch :
             break
         if show_main :
             parents = " ".join(c.parents)
@@ -72,46 +106,35 @@ for branch in 'master' , 'develop' :
                 print "%s %s" % ( c.sha , commits[parents].branch or parents )
             else :
                 print "%s %s" % ( c.sha , parents )
-        c.set_branch(branch)
-        sha = c.parent.sha
-        c = commits[sha]
+        c = commits[c.parent.sha]
     if show_main : print
 
 for branch in branchnames.keys() :
     print "branch", branch
-    sha = branchnames.pop(branch)
-    c = commits[sha]
+    c = commits[branchnames.pop(branch)]
     while c :
-        if not c.parent or c.branch :
+        if c.branch != branch :
             break
         parents = " ".join(c.parents)
         if commits.has_key(parents) :
             print "%s %s" % ( c.sha , commits[parents].branch or parents )
         else :
             print "%s %s" % ( c.sha , parents )
-        c.set_branch(branch)
-        sha = c.parent.sha
-        c = commits[sha]
+        c = commits[c.parent.sha]
     print
 
+for branch in otherbranches.keys() :
+    print "branch", branch
+    c = commits[otherbranches.pop(branch)]
+    while c :
+        if c.branch != branch :
+            break
+        parents = " ".join(c.parents)
+        if commits.has_key(parents) :
+            print "%s %s" % ( c.sha , commits[parents].branch or parents )
+        else :
+            print "%s %s" % ( c.sha , parents )
+        c = commits[c.parent.sha]
+    print
 
-count = 0
-for sha in merges :
-    if not commits[sha].branch :
-        count += 1
-        branch = "removed_%s" % count
-        print "branch", branch
-        c = commits[sha]
-        while c :
-            if not c.parent or c.branch :
-                break
-            parents = " ".join(c.parents)
-            if commits.has_key(parents) :
-                print "%s %s" % ( c.sha , commits[parents].branch or parents )
-            else :
-                print "%s %s" % ( c.sha , parents )
-            c.set_branch(branch)
-            sha = c.parent.sha
-            c = commits[sha]
-        print
 
