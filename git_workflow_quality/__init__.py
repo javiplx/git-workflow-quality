@@ -84,4 +84,7 @@ def set_branches ( commits ) :
     for commit in [ c for c in commits.values() if not c.forks ] :
         commit.set_branch( "branch_%s" % n )
         n += 1
+    for c in commits.values() :
+        if len(c.forks) == 1 :
+            c.child = c.forks.pop()
 
