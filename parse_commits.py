@@ -13,51 +13,72 @@ while line[:-1] :
     line = fd.readline()
 fd.close()
 
-commits = {}
-merges = {}
-
 class commit :
 
-    def __init__ ( self , line ) :
-        self.sha = line[0]
-        self.author_date = line[1]
-        self.committer_date = line[2]
+    def __init__ ( self , sha , author , comimtter , message ) :
+        self.sha = sha
+        self.author = author
+        self.committer = committer
+        self.message = message.replace('"', '&quot;' )
+
+    def set_params ( self , line ) :
+        self.author_date = line[0]
+        self.committer_date = line[1]
         self.parent = None
         self.parents = ()
-        if len(line) > 3 :
-            self.parent = commits[line[3]]
-            if len(line) > 4 :
-                self.parents = line[4].split()
+        self.branch = ''
+        if len(line) > 2 :
+            self.parent = commits[line[2]]
+            if len(line) > 3 :
+                self.parents = line[3].split()
                 if len(self.parents) > 1 :
                     raise Exception( "Octopus merges on %s from %s not handled" % ( self.sha , ", ".join(self.parents) ) )
-                for parent in self.parents :
-                    merges[parent] = True
-        self.branch = None
+        else : # This trick is required to assign a branch to the initial commit and should be revised
+            self.set_branch('master')
         self.child = None
         self.forks = []
 
     def set_branch ( self , branch ) :
         if self.branch :
             raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
-        self.branch = branch.replace('/', '_slash_' )
+        self.branch = branch
 
     def set_child ( self , sha ) :
-        if self.child :
-            raise Exception( "cannot assign %s as child of %s, already parent of %s" % ( sha , self.sha , self.child ) )
-        self.child = sha
+        if self.branch == commits[sha].branch :
+            if self.child :
+                raise Exception( "cannot assign %s as child of %s, already parent of %s" % ( sha , self.sha , self.child ) )
+            self.child = sha
+        else :
+            self.forks.append(sha)
 
     def __str__ ( self ) :
         parents = " ".join(self.parents)
+        forks = " ".join(self.forks)
         if self.parent :
-            return "%s %s %s | %s , %s" % ( self.sha , self.parent.sha , parents , self.child , " ".join(self.forks) )
-        return "%s None %s | %s , %s" % ( self.sha , parents , self.child , " ".join(self.forks) )
+            return "%-20s %s : %s/%s %s | %s :: %s" % ( self.branch[:20] , self.sha , self.parent.sha , self.child , parents , forks , self.message )
+        return "%-20s %s : %40s/%s %s | %s :: %s" % ( self.branch[:20] , self.sha , '<None>' , self.child , parents , forks , self.message )
 
+
+commits = {}
+
+fd = open("messages.list")
+line = fd.readline()
+while line[:-1] :
+    sha , author , committer , message = line[:-1].split(None, 3)
+    commits[sha] = commit( sha , author , committer , message )
+    line = fd.readline()
+fd.close()
+
+order = []
 
 fd = sys.stdin
 line = fd.readline()
 while line[:-1] :
-    c = commit(line[:-1].split(None, 5))
-    commits[c.sha] = c
+    sha , params = line[:-1].split(None, 1)
+    commits[sha].set_params(params.split(None, 4))
+    if commits[sha].parent and commits[sha].parent.sha not in order :
+        raise Exception( "Incorrect input ordering" )
+    order.append( sha )
     line = fd.readline()
 fd.close()
 
@@ -65,191 +86,130 @@ fd.close()
 branchnames = dict([ (branches[key],key) for key in branches ])
 
 for branch in 'master' , 'develop' :
-    c = commits[branchnames.pop(branch)]
+    c = commits[branchnames[branch]]
     while c :
-        if not c.parent or c.branch :
+        if c.branch :
             break
         c.set_branch(branch)
         c = commits[c.parent.sha]
 
 for branch in branchnames.keys() :
-    c = commits[branchnames.pop(branch)]
+    c = commits[branchnames[branch]]
     while c :
-        if not c.parent or c.branch :
+        if c.branch :
             break
         c.set_branch(branch)
         c = commits[c.parent.sha]
 
 
-otherbranches = {}
+order.reverse()
+
+for sha in order :
+    c = commits[sha]
+    if not c.parents or commits[c.parents[0]].branch : continue
+    idx = c.message.find( "Merge branch '" )
+    if idx != -1 :
+        branch_name = c.message[idx+14:]
+        idx = branch_name.find( "'" )
+        branch = branch_name[:idx] + " (?)"
+        c = commits[c.parents[0]]
+        if branch not in branchnames :
+            branchnames[branch] = c.sha
+            branches[c.sha] = branch
+            while c :
+                if not c.parent or c.branch :
+                    break
+                c.set_branch(branch)
+                c = commits[c.parent.sha]
+        else :
+            idx = branch_name.find( "' into '" )
+            branch_name = branch_name[idx+8:]
+            idx = branch_name.find( "'" )
+            branch = branch_name[:idx] + " (?)"
+            if branch not in branchnames :
+                branchnames[branch] = c.sha
+                branches[c.sha] = branch
+                while c :
+                    if c.branch :
+                        break
+                    c.set_branch(branch)
+                    c = commits[c.parent.sha]
+
 count = 0
-for sha in merges :
-    if not commits[sha].branch :
+for sha in order :
+    c = commits[sha]
+    if not c.branch :
         count += 1
         branch = "removed_%s" % count
-        otherbranches[branch] = sha
-        c = commits[sha]
+        branchnames[branch] = c.sha
         while c :
-            if not c.parent or c.branch :
+            if c.branch :
                 break
             c.set_branch(branch)
             c = commits[c.parent.sha]
+
+order.reverse()
+
+
+for sha in order : # child assignment
+    c = commits[sha]
+    if c.parent :
+        commits[c.parent.sha].set_child( sha )
+        for parent in c.parents :
+            commits[parent].set_child( sha )
 
 
 origins = []
 for c in commits.values() :
     if not c.parent :
-        c.set_branch( 'master' )
         origins.append( c )
-    else :
-        commits[c.parent.sha].forks.append( c.sha )
-    if not c.parents :
-        continue
-    if len(c.parents) == 1 and commits[c.parents[0]].branch == c.branch :
-        commits[c.parents[0]].set_child( c.sha )
-    else :
-        for sha in c.parents :
-            commits[sha].forks.append( c.sha )
-
-if len(origins) != 1 :
-    raise Exception( "Multiple initial commits not supported" )
 
 
-for c in commits.values() :
-    if c.child or not c.forks : continue
-    if len(c.forks) == 1 and commits[c.forks[0]].branch == c.branch :
-        c.set_child( c.forks.pop() )
-    else :
-        childs = [ commits[f].sha for f in c.forks if commits[f].branch == c.branch ]
-        if len(childs) == 1 :
-            c.set_child( childs[0] )
-            c.forks.pop(c.forks.index(c.child))
-        else :
-            if not branches.get(c.sha)  and not otherbranches.get(c.branch) :
-                raise Exception( "Unidentified commit at the end of a branch" )
-
-
-branchnames = dict([ (branches[key],key) for key in branches ])
-
-# Iterate over all branches showing the life line of each one. The last one listed is the first one in history
-show_main = True
-
-for branch in 'master' , 'develop' :
-    if show_main : print "branch", branch
-    c = commits[branchnames.pop(branch)]
-    while c :
-        if c.branch != branch :
-            break
-        if show_main :
-            if c.parents :
-                for parent in c.parents :
-                    print "%s %s" % ( c.sha , commits[parent].branch )
-                    #print "%s %s | %s" % ( c.sha , commits[parent].branch , " ".join(c.forks) )
-            else :
-                print "%s %s" % ( c.sha , " ".join(c.parents) )
-                #print "%s %s : %s" % ( c.sha , " ".join(c.parents) , " ".join(c.forks) )
-        if branch == 'master' and not c.parent :
-            break
-        c = commits[c.parent.sha]
-    if show_main : print
-
-for branch in branchnames.keys() :
-    print "branch", branch
-    c = commits[branchnames.pop(branch)]
-    while c :
-        if c.branch != branch :
-            break
-        if c.parents :
-            for parent in c.parents :
-                print "%s %s" % ( c.sha , commits[parent].branch )
-                #print "%s %s | %s" % ( c.sha , commits[parent].branch , " ".join(c.forks) )
-        else :
-            print "%s %s" % ( c.sha , " ".join(c.parents) )
-            #print "%s %s : %s" % ( c.sha , " ".join(c.parents) , " ".join(c.forks) )
-        c = commits[c.parent.sha]
-    print
-
-for branch in otherbranches.keys() :
-    print "branch", branch
-    c = commits[otherbranches[branch]]
-    while c :
-        if c.branch != branch :
-            break
-        if c.parents :
-            for parent in c.parents :
-                print "%s %s" % ( c.sha , commits[parent].branch )
-                #print "%s %s | %s" % ( c.sha , commits[parent].branch , " ".join(c.forks) )
-        else :
-            print "%s %s" % ( c.sha , " ".join(c.parents) )
-            #print "%s %s : %s" % ( c.sha , " ".join(c.parents) , " ".join(c.forks) )
-        c = commits[c.parent.sha]
-    print
-
-
-branchnames = dict([ (branches[key],key) for key in branches ])
-for branch in branchnames.keys() : # + otherbranches.keys() :
-    print "branch", branch
-    for c in commits.values() :
-        if c.branch != branch : continue
-        if not c.parent :
-            print "INITIAL", c.sha
-        elif commits[c.parent.sha].branch != c.branch :
-            print "FORK   ", c.sha
-            print "   from", commits[c.parent.sha].branch , commits[c.parent.sha].sha
-        if not c.child :
-            print "FINAL  ", c.sha
-    print
-
-
-branch_mapping = {}
-fd = open("messages.list")
-line = fd.readline()
-while line[:-1] :
-    sha , author , committer , message = line[:-1].split(None, 3)
-    commits[sha].message = message.replace('"', '&quot;' )
-    idx = message.find( "Merge branch '" )
-    if idx != -1 :
-        branch_name = message[idx+14:]
-        idx = branch_name.find( "'" )
-        branch_name = branch_name[:idx]
-        merged_commit = commits[sha].parents
-        if merged_commit :
-            merged_branch = commits[merged_commit[0]].branch
-            if merged_branch.startswith('removed_') :
-                branch_mapping[merged_branch] = branch_name
-    line = fd.readline()
-fd.close()
-
-
-shown_branches = [ 'master' ]
-def dump ( c , pending , fd=sys.stdout ) :
-    fd.write( "// BEGIN %s BRANCH\n" % c.branch )
-    fd.write( '%s.checkout();\n' % c.branch )
+shown_branches = []
+def forward_plot ( c , pending , fd=sys.stdout ) :
     first = True
+    if not c.branch in shown_branches :
+        shown_branches.append( c.branch )
     while c.child :
         if c.parents :
             sha = c.parents[0]
             if commits[sha].branch in shown_branches :
-                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s | %s"});\n' % ( commits[sha].branch , c.branch , c.sha , commits[sha].branch , c.message ) )
+                first = True
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s | %s"});\n' % ( js_varname(commits[sha].branch) , js_varname(c.branch) , c.sha , commits[sha].branch , c.message ) )
             else :
-                fd.write( "// MERGE COMMIT : %s\n" % c.parents )
-                fd.write( "//       %s : %s\n" % ( commits[sha].branch , commits[sha] ) )
-                fd.write( "// END   %s BRANCH\n\n" % c.branch )
                 return
-        elif c.forks or first :
+        else :
+            if first :
                 first = False
                 fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
+            elif c.forks :
+                first = True
+                fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
+        new_branches = False
         for sha in c.forks :
             if not commits[sha].branch in shown_branches :
-                fd.write( 'var %s = gitgraph.branch("%s");\n' % ( commits[sha].branch , branch_mapping.get(commits[sha].branch, commits[sha].branch) ) )
-                shown_branches.append( commits[sha].branch )
-            pending.append( commits[sha] )
-        if c.forks :
-            fd.write( '%s.checkout();\n' % c.branch )
+                new_branches = True
+                fd.write( 'var %s = gitgraph.branch("%s");\n' % ( js_varname(commits[sha].branch) , commits[sha].branch) )
+            if commits[sha] not in pending and not shown.has_key(sha) :
+                pending.append( commits[sha] )
+        if new_branches :
+            first = True
+            fd.write( '%s.checkout();\n' % js_varname(c.branch) )
         c = commits[c.child]
-    fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
-    fd.write( "// FINAL COMMIT\n" )
-    fd.write( "// END   %s BRANCH\n\n" % c.branch )
+    if c.parents :
+        sha = c.parents[0]
+        if commits[sha].branch in shown_branches :
+            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+    else :
+        fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
+    for sha in c.forks :
+        if not commits[sha].branch in shown_branches :
+            fd.write( 'var %s = gitgraph.branch("%s");\n' % ( js_varname(commits[sha].branch) , commits[sha].branch) )
+        if commits[sha] not in pending and not shown.has_key(sha) :
+            pending.append( commits[sha] )
+
+def js_varname ( var ) :
+    return var.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
 
 fd = open( "commits.js" , 'w' )
 
@@ -293,13 +253,14 @@ var config = {
 
 var gitgraph = new GitGraph(config);
 
-var %s = gitgraph.branch("%s");
+""" )
 
-""" % ( origins[0].branch , origins[0].branch ) )
+for origin in origins :
+    fd.write( 'var %s = gitgraph.branch("%s");\n' % ( js_varname(origins[0].branch) , origins[0].branch ) )
 
 while origins :
     commit = origins.pop(0)
-    dump(commit, origins, fd)
+    forward_plot(commit, origins, fd)
 
 fd.close()
 
