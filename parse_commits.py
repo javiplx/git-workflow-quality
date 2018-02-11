@@ -189,8 +189,8 @@ def forward_plot ( c , pending , fd=sys.stdout ) :
         for sha in c.forks :
             if not commits[sha].branch in shown_branches :
                 new_branches = True
-                fd.write( 'var %s = gitgraph.branch("%s");\n' % ( js_varname(commits[sha].branch) , commits[sha].branch) )
-            if commits[sha] not in pending and not shown.has_key(sha) :
+                fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(commits[sha].branch) , js_branch( commits[sha].branch , len(shown_branches) ) ) )
+            if commits[sha] not in pending :
                 pending.append( commits[sha] )
         if new_branches :
             first = True
@@ -204,12 +204,49 @@ def forward_plot ( c , pending , fd=sys.stdout ) :
         fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
     for sha in c.forks :
         if not commits[sha].branch in shown_branches :
-            fd.write( 'var %s = gitgraph.branch("%s");\n' % ( js_varname(commits[sha].branch) , commits[sha].branch) )
-        if commits[sha] not in pending and not shown.has_key(sha) :
+            fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(commits[sha].branch) , js_branch( commits[sha].branch , len(shown_branches) ) ) )
+        if commits[sha] not in pending :
             pending.append( commits[sha] )
+
+def chrono_plot ( sha_list , fd=sys.stdout) :
+    """Assumes that commits are properly ordered, so just the commit list is given"""
+    current_branch = None
+    shown_branches = []
+    first = True
+    for sha in sha_list :
+        c = commits[sha]
+        if not c.branch in shown_branches :
+            shown_branches.append( c.branch )
+            if c.parent and commits[c.parent.sha].branch != current_branch :
+                fd.write( '%s.checkout();\n' % js_varname(commits[c.parent.sha].branch) )
+            fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(c.branch) , js_branch( c.branch , len(shown_branches) ) ) )
+            first = True
+        elif current_branch != c.branch :
+            fd.write( '%s.checkout();\n' % js_varname(c.branch) )
+            first = True
+        current_branch = c.branch
+        if not c.parents :
+            if first or c.forks :
+                first = False
+                fd.write( 'gitgraph.commit({sha1: "%s", message: "%s"});\n' % ( c.sha , c.message ) )
+        else :
+            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(commits[c.parents[0]].branch) , js_varname(c.branch) , c.sha , c.message ) )
+            if not commits[c.parents[0]].child :
+                if commits[c.parents[0]].branch in shown_branches :
+                    shown_branches.remove( commits[c.parents[0]].branch )
 
 def js_varname ( var ) :
     return var.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
+
+def js_branch ( name , count=2 ) :
+    json = 'name:"%s"' % name
+    if name == 'master' :
+        json += ", column:0"
+    elif name == 'develop' :
+        json += ", column:1"
+    else :
+        json += ", column:%d" % count
+    return json
 
 fd = open( "commits.js" , 'w' )
 
@@ -255,8 +292,9 @@ var gitgraph = new GitGraph(config);
 
 """ )
 
+
 for origin in origins :
-    fd.write( 'var %s = gitgraph.branch("%s");\n' % ( js_varname(origins[0].branch) , origins[0].branch ) )
+    fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(origins[0].branch) , js_branch(origins[0].branch) ) )
 
 while origins :
     commit = origins.pop(0)
