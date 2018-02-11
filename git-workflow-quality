@@ -4,3 +4,5 @@ import git_workflow_quality
 
 commits , order = git_workflow_quality.get_commits()
 
+git_workflow_quality.set_branches( commits )
+

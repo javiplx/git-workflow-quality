@@ -73,3 +73,15 @@ def get_commits () :
 
     return commits , order
 
+
+def set_branches ( commits ) :
+    for c in commits.values() :
+        if c.parent :
+            commits[c.parent].forks.append( c.sha )
+        for parent in c.parents :
+            commits[parent].forks.append( c.sha )
+    n = 1
+    for commit in [ c for c in commits.values() if not c.forks ] :
+        commit.set_branch( "branch_%s" % n )
+        n += 1
+

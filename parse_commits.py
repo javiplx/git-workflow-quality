@@ -69,20 +69,10 @@ for sha in order :
                     c.set_branch(branch)
                     c = commits[c.parent.sha]
 
-count = 0
-for sha in order :
-    c = commits[sha]
-    if not c.branch :
-        count += 1
-        branch = "removed_%s" % count
-        branchnames[branch] = c.sha
-        while c :
-            if c.branch :
-                break
-            c.set_branch(branch)
-            c = commits[c.parent.sha]
-
 order.reverse()
+
+
+git_workflow_quality.set_branches( commits )
 
 
 for sha in order : # child assignment
