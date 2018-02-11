@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import git_workflow_quality
+
 import sys
 
 branches = {}
@@ -13,75 +15,7 @@ while line[:-1] :
     line = fd.readline()
 fd.close()
 
-class commit :
-
-    def __init__ ( self , sha , author , comimtter , message ) :
-        self.sha = sha
-        self.author = author
-        self.committer = committer
-        self.message = message.replace('"', '&quot;' )
-
-    def set_params ( self , line ) :
-        self.author_date = line[0]
-        self.committer_date = line[1]
-        self.parent = None
-        self.parents = ()
-        self.branch = ''
-        if len(line) > 2 :
-            self.parent = commits[line[2]]
-            if len(line) > 3 :
-                self.parents = line[3].split()
-                if len(self.parents) > 1 :
-                    raise Exception( "Octopus merges on %s from %s not handled" % ( self.sha , ", ".join(self.parents) ) )
-        else : # This trick is required to assign a branch to the initial commit and should be revised
-            self.set_branch('master')
-        self.child = None
-        self.forks = []
-
-    def set_branch ( self , branch ) :
-        if self.branch :
-            raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
-        self.branch = branch
-
-    def set_child ( self , sha ) :
-        if self.branch == commits[sha].branch :
-            if self.child :
-                raise Exception( "cannot assign %s as child of %s, already parent of %s" % ( sha , self.sha , self.child ) )
-            self.child = sha
-        else :
-            self.forks.append(sha)
-
-    def __str__ ( self ) :
-        parents = " ".join(self.parents)
-        forks = " ".join(self.forks)
-        if self.parent :
-            return "%-20s %s : %s/%s %s | %s :: %s" % ( self.branch[:20] , self.sha , self.parent.sha , self.child , parents , forks , self.message )
-        return "%-20s %s : %40s/%s %s | %s :: %s" % ( self.branch[:20] , self.sha , '<None>' , self.child , parents , forks , self.message )
-
-
-commits = {}
-
-fd = open("messages.list")
-line = fd.readline()
-while line[:-1] :
-    sha , author , committer , message = line[:-1].split(None, 3)
-    commits[sha] = commit( sha , author , committer , message )
-    line = fd.readline()
-fd.close()
-
-order = []
-
-fd = sys.stdin
-line = fd.readline()
-while line[:-1] :
-    sha , params = line[:-1].split(None, 1)
-    commits[sha].set_params(params.split(None, 4))
-    if commits[sha].parent and commits[sha].parent.sha not in order :
-        raise Exception( "Incorrect input ordering" )
-    order.append( sha )
-    line = fd.readline()
-fd.close()
-
+commits , order = git_workflow_quality.get_commits()
 
 branchnames = dict([ (branches[key],key) for key in branches ])
 

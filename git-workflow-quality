@@ -1,14 +1,6 @@
 #!/usr/bin/python
 
-import subprocess
+import git_workflow_quality
 
-rc = subprocess.Popen( 'git log --all --format="%H %ae %ce %s"' , stdout=subprocess.PIPE )
-for line in rc.stdout.readlines() :
-    print line[:-1]
-print
-
-rc = subprocess.Popen( 'git log --all --format="%H %at %ct %P"' , stdout=subprocess.PIPE )
-for line in rc.stdout.readlines() :
-    print line[:-1]
-print
+commits , order = git_workflow_quality.get_commits()
 
