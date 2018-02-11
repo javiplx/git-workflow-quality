@@ -236,7 +236,7 @@ def chrono_plot ( sha_list , fd=sys.stdout) :
                     shown_branches.remove( commits[c.parents[0]].branch )
 
 def js_varname ( var ) :
-    return var.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
+    return "branch_" + var.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
 
 def js_branch ( name , count=2 ) :
     json = 'name:"%s"' % name
