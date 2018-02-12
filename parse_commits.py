@@ -4,16 +4,7 @@ import git_workflow_quality
 
 import sys
 
-branches = {}
-
-fd = open("branches.list")
-line = fd.readline()
-while line[:-1] :
-    if not line[:-1].endswith('HEAD') :
-        items = line[:-1].split(None, 2)
-        branches[items[0]] = items[1]
-    line = fd.readline()
-fd.close()
+branches = get_branches()
 
 commits , order = git_workflow_quality.get_commits()
 

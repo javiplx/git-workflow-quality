@@ -1,6 +1,9 @@
 
 import subprocess
 
+import os
+
+
 class commit :
 
     def __init__ ( self , sha , author , committer , message ) :
@@ -71,8 +74,28 @@ def get_commits () :
         order.append( sha )
         line = cmd.stdout.readline()
 
+    for sha,branch in get_branches().iteritems() :
+        commits[sha].set_branch( branch )
+
     return commits , order
 
+
+def get_branches () :
+    branches = {}
+    with open(".git/info/refs") as fd :
+        line = fd.readline()
+        while line[:-1] :
+            items = line[:-1].split(None, 2)
+            if items[1].startswith('refs/heads/') :
+                branches[items[0]] = items[1][11:]
+            line = fd.readline()
+    for root, dirs, files in os.walk(".git/refs/heads") :
+        for f in files:
+            filename = os.path.join(root, f)
+            fd = open(filename)
+            branches[fd.readline()[:-1]] = filename[16:]
+            fd.close()
+    return branches
 
 def set_branches ( commits ) :
     for c in commits.values() :
