@@ -10,23 +10,6 @@ commits , order = git_workflow_quality.get_commits()
 
 branchnames = dict([ (branches[key],key) for key in branches ])
 
-for branch in 'master' , 'develop' :
-    c = commits[branchnames[branch]]
-    while c :
-        if c.branch :
-            break
-        c.set_branch(branch)
-        c = commits[c.parent.sha]
-
-for branch in branchnames.keys() :
-    c = commits[branchnames[branch]]
-    while c :
-        if c.branch :
-            break
-        c.set_branch(branch)
-        c = commits[c.parent.sha]
-
-
 order.reverse()
 
 for sha in order :
@@ -61,17 +44,6 @@ for sha in order :
                     c = commits[c.parent.sha]
 
 order.reverse()
-
-
-git_workflow_quality.set_branches( commits )
-
-
-for sha in order : # child assignment
-    c = commits[sha]
-    if c.parent :
-        commits[c.parent.sha].set_child( sha )
-        for parent in c.parents :
-            commits[parent].set_child( sha )
 
 
 origins = []

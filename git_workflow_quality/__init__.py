@@ -24,8 +24,6 @@ class commit :
                 self.parents = line[3].split()
                 if len(self.parents) > 1 :
                     raise Exception( "Octopus merges on %s from %s not handled" % ( self.sha , ", ".join(self.parents) ) )
-        else : # This trick is required to assign a branch to the initial commit and should be revised
-            self.set_branch('master')
         self.child = None
         self.forks = []
 
@@ -35,12 +33,10 @@ class commit :
         self.branch = branch
 
     def set_child ( self , sha ) :
-        if self.branch == commits[sha].branch :
-            if self.child :
-                raise Exception( "cannot assign %s as child of %s, already parent of %s" % ( sha , self.sha , self.child ) )
-            self.child = sha
-        else :
-            self.forks.append(sha)
+        if self.child :
+            raise Exception( "cannot assign %s as child of %s, already parent of %s" % ( sha , self.sha , self.child ) )
+        self.child = sha
+        self.forks.remove(sha)
 
     def __str__ ( self ) :
         parents = " ".join(self.parents)
@@ -74,8 +70,12 @@ def get_commits () :
         order.append( sha )
         line = cmd.stdout.readline()
 
-    for sha,branch in get_branches().iteritems() :
-        commits[sha].set_branch( branch )
+    branches = get_branches()
+
+    for sha in branches :
+        commits[sha].set_branch( branches[sha] )
+
+    set_childs ( commits , branches )
 
     return commits , order
 
@@ -97,17 +97,41 @@ def get_branches () :
             fd.close()
     return branches
 
-def set_branches ( commits ) :
+def set_childs ( commits , branches ) :
+
     for c in commits.values() :
         if c.parent :
             commits[c.parent].forks.append( c.sha )
         for parent in c.parents :
             commits[parent].forks.append( c.sha )
+
     n = 1
-    for commit in [ c for c in commits.values() if not c.forks ] :
+    for commit in commits.values() :
+        if commit.forks or commit.branch :
+            continue
         commit.set_branch( "branch_%s" % n )
+        if branches.has_key(commit.sha) and branches[commit.sha] != commit.branch :
+            raise Exception( "Rewriting %s from branch %s to %s" % ( commit.sha , branches[commit.sha] , commit.brach ) )
+        branches[commit.sha] = commit.branch
         n += 1
+
+    for sha,branch in branches.iteritems() :
+        commit = commits[sha]
+        c = commits[commit.parent]
+        while c :
+            if not c.parent : # Initial commit detection
+                c.set_branch( branch )
+                break
+            if c.branch :
+                break
+            c.set_branch(branch)
+            c = commits[c.parent]
+
     for c in commits.values() :
         if len(c.forks) == 1 :
-            c.child = c.forks.pop()
+            c.set_child( c.forks[0] )
+        elif len(c.forks) > 1 :
+            child = [ sha for sha in c.forks if commits[sha].branch == c.branch ]
+            if child :
+                 c.set_child( child[0] )
 
