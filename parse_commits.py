@@ -6,44 +6,7 @@ import sys
 
 branches = get_branches()
 
-commits , order = git_workflow_quality.get_commits()
-
-branchnames = dict([ (branches[key],key) for key in branches ])
-
-order.reverse()
-
-for sha in order :
-    c = commits[sha]
-    if not c.parents or commits[c.parents[0]].branch : continue
-    idx = c.message.find( "Merge branch '" )
-    if idx != -1 :
-        branch_name = c.message[idx+14:]
-        idx = branch_name.find( "'" )
-        branch = branch_name[:idx] + " (?)"
-        c = commits[c.parents[0]]
-        if branch not in branchnames :
-            branchnames[branch] = c.sha
-            branches[c.sha] = branch
-            while c :
-                if not c.parent or c.branch :
-                    break
-                c.set_branch(branch)
-                c = commits[c.parent.sha]
-        else :
-            idx = branch_name.find( "' into '" )
-            branch_name = branch_name[idx+8:]
-            idx = branch_name.find( "'" )
-            branch = branch_name[:idx] + " (?)"
-            if branch not in branchnames :
-                branchnames[branch] = c.sha
-                branches[c.sha] = branch
-                while c :
-                    if c.branch :
-                        break
-                    c.set_branch(branch)
-                    c = commits[c.parent.sha]
-
-order.reverse()
+commits = git_workflow_quality.get_commits()
 
 
 origins = []

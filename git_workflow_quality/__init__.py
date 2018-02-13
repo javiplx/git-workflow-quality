@@ -49,7 +49,6 @@ class commit :
 def get_commits () :
 
     commits = {}
-    order = []
 
     cmd = subprocess.Popen( 'git log --all --format="%H %ae %ce %s"' , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -75,9 +74,9 @@ def get_commits () :
     for sha in branches :
         commits[sha].set_branch( branches[sha] )
 
-    set_childs ( commits , branches )
+    set_childs ( commits , branches , order )
 
-    return commits , order
+    return commits
 
 
 def get_branches () :
@@ -97,13 +96,44 @@ def get_branches () :
             fd.close()
     return branches
 
-def set_childs ( commits , branches ) :
+def set_childs ( commits , branches , order ) :
 
     for c in commits.values() :
         if c.parent :
             commits[c.parent].forks.append( c.sha )
         for parent in c.parents :
             commits[parent].forks.append( c.sha )
+
+    order.reverse()
+
+    for sha in order :
+        c = commits[sha]
+        if not c.parents or commits[c.parents[0]].branch : continue
+        idx = c.message.find( "Merge branch '" )
+        if idx != -1 :
+            branch_name = c.message[idx+14:]
+            idx = branch_name.find( "'" )
+            branch = branch_name[:idx] + " (?)"
+            c = commits[c.parents[0]]
+            if branch not in branches.values() :
+                branches[c.sha] = branch
+                while c :
+                    if not c.parent or c.branch :
+                        break
+                    c.set_branch(branch)
+                    c = commits[c.parent]
+            else :
+                idx = branch_name.find( "' into '" )
+                branch_name = branch_name[idx+8:]
+                idx = branch_name.find( "'" )
+                branch = branch_name[:idx] + " (?)"
+                if branch not in branches.values() :
+                    branches[c.sha] = branch
+                    while c :
+                        if c.branch :
+                            break
+                        c.set_branch(branch)
+                        c = commits[c.parent]
 
     n = 1
     for commit in commits.values() :
