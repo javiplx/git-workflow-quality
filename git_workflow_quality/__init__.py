@@ -69,14 +69,9 @@ def get_commits () :
         order.append( sha )
         line = cmd.stdout.readline()
 
-    branches = get_branches()
+    set_childs ( commits , order )
 
-    for sha in branches :
-        commits[sha].set_branch( branches[sha] )
-
-    set_childs ( commits , branches , order )
-
-    return commits
+    return commits , order
 
 
 def get_branches () :
@@ -96,13 +91,35 @@ def get_branches () :
             fd.close()
     return branches
 
-def set_childs ( commits , branches , order ) :
+def set_childs ( commits , order , primary=('master', 'develop') ) :
 
     for c in commits.values() :
         if c.parent :
             commits[c.parent].forks.append( c.sha )
         for parent in c.parents :
             commits[parent].forks.append( c.sha )
+
+    branches = get_branches()
+
+    branchnames = dict([ (branches[key],key) for key in branches ])
+
+    for branch in primary :
+        if not branchnames.has_key(branch) :
+            continue
+        commit = commits[branchnames[branch]]
+        c = commits[commit.parent]
+        while c :
+            if not c.parent : # Initial commit detection
+                c.set_branch( branch )
+                break
+            if c.branch :
+                break
+            c.set_branch(branch)
+            c = commits[c.parent]
+
+    for sha in branches :
+        # This will raise an exception with branches without commits
+        commits[sha].set_branch( branches[sha] )
 
     order.reverse()
 
