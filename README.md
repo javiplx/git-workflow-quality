@@ -26,6 +26,9 @@ The initial metric set is the global one, but we can add some metrics about the 
 - number of different branches merged into (accounting for repetition and _inner_ merges))
 - number of branches contributed (merged) to
 
+Merges among branches can generate its own network diagram. The ideal result might have master in the center
+and layers around for topic branches, then subtopic branches and so on
+
 ### assigning commits to branches
 
 As merged branches are typically removed, we need some heuristics to recover removed branches. We
