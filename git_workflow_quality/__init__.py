@@ -4,6 +4,8 @@ import subprocess
 import os
 
 
+primary = ('master', 'develop')
+
 class commit :
 
     def __init__ ( self , sha , author , committer , message ) :
@@ -29,6 +31,8 @@ class commit :
 
     def set_branch ( self , branch ) :
         if self.branch :
+            if self.branch in primary :
+                return
             raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
         self.branch = branch
 
@@ -91,7 +95,7 @@ def get_branches () :
             fd.close()
     return branches
 
-def set_childs ( commits , order , primary=('master', 'develop') ) :
+def set_childs ( commits , order ) :
 
     for c in commits.values() :
         if c.parent :
@@ -118,7 +122,6 @@ def set_childs ( commits , order , primary=('master', 'develop') ) :
             c = commits[c.parent]
 
     for sha in branches :
-        # This will raise an exception with branches without commits
         commits[sha].set_branch( branches[sha] )
 
     order.reverse()
