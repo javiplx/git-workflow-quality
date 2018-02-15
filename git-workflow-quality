@@ -8,6 +8,6 @@ print
 print "Number of commits: %s" % len(commits)
 print "# initial commits: %s" % len([c for c in commits.values() if not c.parent ])
 print "Number of merges:  %s" % len([c for c in commits.values() if c.parents])
-print "Ammended commits:  %s" % len([c for c in commits.values() if c.author != c.committer])
+print "Ammended commits:  %s" % len([c for c in commits.values() if c.author != c.committer and not c.parents])
 print
 
