@@ -86,6 +86,7 @@ fd.close()
 branchnames = dict([ (branches[key],key) for key in branches ])
 
 for branch in 'master' , 'develop' :
+  if branchnames.has_key(branch) :
     c = commits[branchnames[branch]]
     while c :
         if c.branch :
