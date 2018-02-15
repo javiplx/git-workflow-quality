@@ -46,34 +46,6 @@ class commit :
         return "%-20s %s : %40s/%s %s | %s :: %s" % ( self.branch[:20] , self.sha , '<None>' , self.child , parents , forks , self.message )
 
 
-def get_commits () :
-
-    commits = {}
-
-    cmd = subprocess.Popen( 'git log --all --format="%H %ae %ce %s"' , stdout=subprocess.PIPE )
-    line = cmd.stdout.readline()
-    while line[:-1] :
-        sha , author , committer , message = line[:-1].split(None, 3)
-        commits[sha] = commit( sha , author , committer , message )
-        line = cmd.stdout.readline()
-
-    order = []
-
-    cmd = subprocess.Popen( 'git log --all --date-order --reverse --format="%H %at %ct %P"' , stdout=subprocess.PIPE )
-    line = cmd.stdout.readline()
-    while line[:-1] :
-        sha , params = line[:-1].split(None, 1)
-        commits[sha].set_params(params.split(None, 4))
-        if commits[sha].parent and commits[sha].parent not in order :
-            raise Exception( "Incorrect input ordering" )
-        order.append( sha )
-        line = cmd.stdout.readline()
-
-    set_childs ( commits , order )
-
-    return commits , order
-
-
 def get_branches () :
     branches = {}
     with open(".git/info/refs") as fd :
@@ -91,13 +63,49 @@ def get_branches () :
             fd.close()
     return branches
 
-def set_childs ( commits , order , primary=('master', 'develop') ) :
 
-    for c in commits.values() :
+class repository :
+
+  def __init__ ( self ) :
+
+    self.commits = {}
+    self.order = []
+
+    cmd = subprocess.Popen( 'git log --all --format="%H %ae %ce %s"' , stdout=subprocess.PIPE )
+    line = cmd.stdout.readline()
+    while line[:-1] :
+        sha , author , committer , message = line[:-1].split(None, 3)
+        self.commits[sha] = commit( sha , author , committer , message )
+        line = cmd.stdout.readline()
+
+    cmd = subprocess.Popen( 'git log --all --date-order --reverse --format="%H %at %ct %P"' , stdout=subprocess.PIPE )
+    line = cmd.stdout.readline()
+    while line[:-1] :
+        sha , params = line[:-1].split(None, 1)
+        self.commits[sha].set_params(params.split(None, 4))
+        if self.commits[sha].parent and self.commits[sha].parent not in self.order :
+            raise Exception( "Incorrect input ordering" )
+        self.order.append( sha )
+        line = cmd.stdout.readline()
+
+    self.set_childs()
+
+
+  def report( self ) :
+      output = []
+      output.append( "Number of commits: %s" % len(self.commits) )
+      output.append( "# initial commits: %s" % len([c for c in self.commits.values() if not c.parent ]) )
+      output.append( "Number of merges:  %s" % len([c for c in self.commits.values() if c.parents]) )
+      output.append( "Ammended commits:  %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
+      return "\n".join(output)
+
+  def set_childs ( self , primary=('master', 'develop') ) :
+
+    for c in self.commits.values() :
         if c.parent :
-            commits[c.parent].forks.append( c.sha )
+            self.commits[c.parent].forks.append( c.sha )
         for parent in c.parents :
-            commits[parent].forks.append( c.sha )
+            self.commits[parent].forks.append( c.sha )
 
     branches = get_branches()
 
@@ -106,8 +114,8 @@ def set_childs ( commits , order , primary=('master', 'develop') ) :
     for branch in primary :
         if not branchnames.has_key(branch) :
             continue
-        commit = commits[branchnames[branch]]
-        c = commits[commit.parent]
+        commit = self.commits[branchnames[branch]]
+        c = self.commits[commit.parent]
         while c :
             if not c.parent : # Initial commit detection
                 c.set_branch( branch )
@@ -115,30 +123,30 @@ def set_childs ( commits , order , primary=('master', 'develop') ) :
             if c.branch :
                 break
             c.set_branch(branch)
-            c = commits[c.parent]
+            c = self.commits[c.parent]
 
     for sha in branches :
         # This will raise an exception with branches without commits
-        commits[sha].set_branch( branches[sha] )
+        self.commits[sha].set_branch( branches[sha] )
 
-    order.reverse()
+    self.order.reverse()
 
-    for sha in order :
-        c = commits[sha]
-        if not c.parents or commits[c.parents[0]].branch : continue
+    for sha in self.order :
+        c = self.commits[sha]
+        if not c.parents or self.commits[c.parents[0]].branch : continue
         idx = c.message.find( "Merge branch '" )
         if idx != -1 :
             branch_name = c.message[idx+14:]
             idx = branch_name.find( "'" )
             branch = branch_name[:idx] + " (?)"
-            c = commits[c.parents[0]]
+            c = self.commits[c.parents[0]]
             if branch not in branches.values() :
                 branches[c.sha] = branch
                 while c :
                     if not c.parent or c.branch :
                         break
                     c.set_branch(branch)
-                    c = commits[c.parent]
+                    c = self.commits[c.parent]
             else :
                 idx = branch_name.find( "' into '" )
                 branch_name = branch_name[idx+8:]
@@ -150,10 +158,12 @@ def set_childs ( commits , order , primary=('master', 'develop') ) :
                         if c.branch :
                             break
                         c.set_branch(branch)
-                        c = commits[c.parent]
+                        c = self.commits[c.parent]
+
+    self.order.reverse()
 
     n = 1
-    for commit in commits.values() :
+    for commit in self.commits.values() :
         if commit.forks or commit.branch :
             continue
         commit.set_branch( "branch_%s" % n )
@@ -163,8 +173,8 @@ def set_childs ( commits , order , primary=('master', 'develop') ) :
         n += 1
 
     for sha,branch in branches.iteritems() :
-        commit = commits[sha]
-        c = commits[commit.parent]
+        commit = self.commits[sha]
+        c = self.commits[commit.parent]
         while c :
             if not c.parent : # Initial commit detection
                 c.set_branch( branch )
@@ -172,13 +182,13 @@ def set_childs ( commits , order , primary=('master', 'develop') ) :
             if c.branch :
                 break
             c.set_branch(branch)
-            c = commits[c.parent]
+            c = self.commits[c.parent]
 
-    for c in commits.values() :
+    for c in self.commits.values() :
         if len(c.forks) == 1 :
             c.set_child( c.forks[0] )
         elif len(c.forks) > 1 :
-            child = [ sha for sha in c.forks if commits[sha].branch == c.branch ]
+            child = [ sha for sha in c.forks if self.commits[sha].branch == c.branch ]
             if child :
                  c.set_child( child[0] )
 
