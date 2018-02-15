@@ -9,12 +9,6 @@ branches = get_branches()
 commits = git_workflow_quality.get_commits()
 
 
-origins = []
-for c in commits.values() :
-    if not c.parent :
-        origins.append( c )
-
-
 shown_branches = []
 def forward_plot ( c , pending , fd=sys.stdout ) :
     first = True
