@@ -29,6 +29,8 @@ class commit :
 
     def set_branch ( self , branch ) :
         if self.branch :
+            if self.branch in repository.primary :
+                return
             raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
         self.branch = branch
 
@@ -66,6 +68,8 @@ def get_branches () :
 
 class repository :
 
+  primary = ('master', 'develop')
+
   def __init__ ( self ) :
 
     self.commits = {}
@@ -99,7 +103,7 @@ class repository :
       output.append( "Ammended commits:  %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
       return "\n".join(output)
 
-  def set_childs ( self , primary=('master', 'develop') ) :
+  def set_childs ( self ) :
 
     for c in self.commits.values() :
         if c.parent :
@@ -111,7 +115,7 @@ class repository :
 
     branchnames = dict([ (branches[key],key) for key in branches ])
 
-    for branch in primary :
+    for branch in repository.primary :
         if not branchnames.has_key(branch) :
             continue
         commit = self.commits[branchnames[branch]]
@@ -126,7 +130,6 @@ class repository :
             c = self.commits[c.parent]
 
     for sha in branches :
-        # This will raise an exception with branches without commits
         self.commits[sha].set_branch( branches[sha] )
 
     self.order.reverse()
