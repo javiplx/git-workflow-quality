@@ -1,6 +1,6 @@
 
 import subprocess
-
+import re
 import os
 
 
@@ -136,12 +136,10 @@ class repository :
 
     for sha in self.order :
         c = self.commits[sha]
-        if not c.parents or self.commits[c.parents[0]].branch : continue
-        idx = c.message.find( "Merge branch '" )
-        if idx != -1 :
-            branch_name = c.message[idx+14:]
-            idx = branch_name.find( "'" )
-            branch = branch_name[:idx] + " (?)"
+        if not c.parents : continue
+        merged = re.search("Merge branch (?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", c.message)
+        if merged :
+            branch = merged.group('source').strip("'")
             c = self.commits[c.parents[0]]
             if branch not in branches.values() :
                 branches[c.sha] = branch
@@ -150,18 +148,15 @@ class repository :
                         break
                     c.set_branch(branch)
                     c = self.commits[c.parent]
-            else :
-                idx = branch_name.find( "' into '" )
-                branch_name = branch_name[idx+8:]
-                idx = branch_name.find( "'" )
-                branch = branch_name[:idx] + " (?)"
-                if branch not in branches.values() :
-                    branches[c.sha] = branch
-                    while c :
-                        if c.branch :
-                            break
-                        c.set_branch(branch)
-                        c = self.commits[c.parent]
+            branch = merged.group('target').strip("'")
+            c = self.commits[c.parent]
+            if branch not in branches.values() :
+                branches[c.sha] = branch
+                while c :
+                    if c.branch :
+                        break
+                    c.set_branch(branch)
+                    c = self.commits[c.parent]
 
     self.order.reverse()
 
