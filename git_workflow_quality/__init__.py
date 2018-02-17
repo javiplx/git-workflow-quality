@@ -107,7 +107,6 @@ class repository :
   def set_childs ( self ) :
 
     branches = []
-    n = 0
     for commit in self.commits.values() :
         merged = re.search("Merge branch (?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
         if merged :
@@ -117,17 +116,21 @@ class repository :
             target = merged.group('target').strip("'")
             branches.append( ( commit.parent , target ) )
             self.commits[commit.parent].set_branch(target)
-        else :
-            for parent in commit.parents :
-                n += 1
-                newbranch = "branch_%s" % n
-                branches.append( ( parent , newbranch ) )
-                self.commits[parent].set_branch( newbranch )
-    if n : print "WARNING : %d removed branch not automatically detected" % n
 
     for sha,branch in get_branches() :
         branches.append( ( sha , branch ) )
         self.commits[sha].set_branch( branch )
+
+    n = 0
+    for commit in self.commits.values() :
+        for parent in commit.parents :
+            c = self.commits[parent]
+            if not c.branch :
+                n += 1
+                newbranch = "branch_%s" % n
+                branches.append( ( c.sha , newbranch ) )
+                c.set_branch( newbranch )
+    if n : print "WARNING : %d removed branch not automatically detected" % n
 
     # All branches detected at this point
 
