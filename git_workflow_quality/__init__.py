@@ -31,7 +31,8 @@ class commit :
         if self.branch :
             if self.branch in repository.primary :
                 return
-            raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
+            if not branch in repository.primary :
+                raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
         self.branch = branch
 
     def set_child ( self , sha ) :
@@ -49,19 +50,19 @@ class commit :
 
 
 def get_branches () :
-    branches = {}
+    branches = []
     with open(".git/info/refs") as fd :
         line = fd.readline()
         while line[:-1] :
             items = line[:-1].split(None, 2)
             if items[1].startswith('refs/heads/') :
-                branches[items[0]] = items[1][11:]
+                branches.append( ( items[0] , items[1][11:] ) )
             line = fd.readline()
     for root, dirs, files in os.walk(".git/refs/heads") :
         for f in files:
             filename = os.path.join(root, f)
             fd = open(filename)
-            branches[fd.readline()[:-1]] = filename[16:]
+            branches.append( ( fd.readline()[:-1] , filename[16:] ) )
             fd.close()
     return branches
 
@@ -105,82 +106,48 @@ class repository :
 
   def set_childs ( self ) :
 
-    for c in self.commits.values() :
-        if c.parent :
-            self.commits[c.parent].forks.append( c.sha )
-        for parent in c.parents :
-            self.commits[parent].forks.append( c.sha )
-
-    branches = get_branches()
-
-    branchnames = dict([ (branches[key],key) for key in branches ])
-
-    for branch in repository.primary :
-        if not branchnames.has_key(branch) :
-            continue
-        commit = self.commits[branchnames[branch]]
-        c = self.commits[commit.parent]
-        while c :
-            if not c.parent : # Initial commit detection
-                c.set_branch( branch )
-                break
-            if c.branch :
-                break
-            c.set_branch(branch)
-            c = self.commits[c.parent]
-
-    for sha in branches :
-        self.commits[sha].set_branch( branches[sha] )
-
-    self.order.reverse()
-
-    for sha in self.order :
-        c = self.commits[sha]
-        if not c.parents : continue
-        merged = re.search("Merge branch (?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", c.message)
-        if merged :
-            branch = merged.group('source').strip("'")
-            c = self.commits[c.parents[0]]
-            if branch not in branches.values() :
-                branches[c.sha] = branch
-                while c :
-                    if not c.parent or c.branch :
-                        break
-                    c.set_branch(branch)
-                    c = self.commits[c.parent]
-            branch = merged.group('target').strip("'")
-            c = self.commits[c.parent]
-            if branch not in branches.values() :
-                branches[c.sha] = branch
-                while c :
-                    if c.branch :
-                        break
-                    c.set_branch(branch)
-                    c = self.commits[c.parent]
-
-    self.order.reverse()
-
-    n = 1
+    branches = []
+    n = 0
     for commit in self.commits.values() :
-        if commit.forks or commit.branch :
-            continue
-        commit.set_branch( "branch_%s" % n )
-        if branches.has_key(commit.sha) and branches[commit.sha] != commit.branch :
-            raise Exception( "Rewriting %s from branch %s to %s" % ( commit.sha , branches[commit.sha] , commit.brach ) )
-        branches[commit.sha] = commit.branch
-        n += 1
+        merged = re.search("Merge branch (?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
+        if merged :
+            source = merged.group('source').strip("'")
+            branches.append( ( commit.parents[0] , source ) )
+            self.commits[commit.parents[0]].set_branch(source)
+            target = merged.group('target').strip("'")
+            branches.append( ( commit.parent , target ) )
+            self.commits[commit.parent].set_branch(target)
+        else :
+            for parent in commit.parents :
+                n += 1
+                newbranch = "branch_%s" % n
+                branches.append( ( parent , newbranch ) )
+                self.commits[parent].set_branch( newbranch )
+    if n : print "WARNING : %d removed branch not automatically detected" % n
 
-    for sha,branch in branches.iteritems() :
+    for sha,branch in get_branches() :
+        branches.append( ( sha , branch ) )
+        self.commits[sha].set_branch( branch )
+
+    # All branches detected at this point
+
+    for sha,branch in branches :
         commit = self.commits[sha]
         c = self.commits[commit.parent]
         while c :
             if not c.parent : # Initial commit detection
                 c.set_branch( branch )
                 break
-            if c.branch :
+            if c.branch and not branch in repository.primary :
                 break
             c.set_branch(branch)
             c = self.commits[c.parent]
+
+    for c in self.commits.values() :
+        if c.parent :
+            self.commits[c.parent].forks.append( c.sha )
+        for parent in c.parents :
+            self.commits[parent].forks.append( c.sha )
 
     for c in self.commits.values() :
         if len(c.forks) == 1 :
