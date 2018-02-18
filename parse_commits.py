@@ -4,16 +4,14 @@ import git_workflow_quality
 
 import sys
 
-branches = get_branches()
 
-commits = git_workflow_quality.get_commits()
+commits , order = git_workflow_quality.get_commits()
 
 
 shown_branches = []
 def forward_plot ( c , pending , fd=sys.stdout ) :
     first = True
-    if not c.branch in shown_branches :
-        shown_branches.append( c.branch )
+    fd.write( '%s.checkout();\n' % js_varname(c.branch) )
     while c.child :
         if c.parents :
             sha = c.parents[0]
@@ -21,7 +19,7 @@ def forward_plot ( c , pending , fd=sys.stdout ) :
                 first = True
                 fd.write( '%s.merge(%s, {sha1:"%s", message:"%s | %s"});\n' % ( js_varname(commits[sha].branch) , js_varname(c.branch) , c.sha , commits[sha].branch , c.message ) )
             else :
-                return
+                break
         else :
             if first :
                 first = False
@@ -31,38 +29,38 @@ def forward_plot ( c , pending , fd=sys.stdout ) :
                 fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
         new_branches = False
         for sha in c.forks :
+            first = True
             if not commits[sha].branch in shown_branches :
                 new_branches = True
                 fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(commits[sha].branch) , js_branch( commits[sha].branch , len(shown_branches) ) ) )
+                shown_branches.append( commits[sha].branch )
             if commits[sha] not in pending :
                 pending.append( commits[sha] )
         if new_branches :
             first = True
             fd.write( '%s.checkout();\n' % js_varname(c.branch) )
         c = commits[c.child]
-    if c.parents :
-        sha = c.parents[0]
-        if commits[sha].branch in shown_branches :
-            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
     else :
-        fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
-    for sha in c.forks :
-        if not commits[sha].branch in shown_branches :
-            fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(commits[sha].branch) , js_branch( commits[sha].branch , len(shown_branches) ) ) )
-        if commits[sha] not in pending :
-            pending.append( commits[sha] )
+        if c.parents :
+            sha = c.parents[0]
+            if commits[sha].branch in shown_branches :
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+        else :
+            fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
+        for sha in c.forks :
+            if commits[sha] not in pending :
+                pending.append( commits[sha] )
 
 def chrono_plot ( sha_list , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
     current_branch = None
-    shown_branches = []
     first = True
     for sha in sha_list :
         c = commits[sha]
         if not c.branch in shown_branches :
             shown_branches.append( c.branch )
-            if c.parent and commits[c.parent.sha].branch != current_branch :
-                fd.write( '%s.checkout();\n' % js_varname(commits[c.parent.sha].branch) )
+            if c.parent and commits[c.parent].branch != current_branch :
+                fd.write( '%s.checkout();\n' % js_varname(commits[c.parent].branch) )
             fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(c.branch) , js_branch( c.branch , len(shown_branches) ) ) )
             first = True
         elif current_branch != c.branch :
@@ -137,7 +135,14 @@ var gitgraph = new GitGraph(config);
 """ )
 
 
+origins = []
+for c in commits.values() :
+    if not c.parent :
+        origins.append( c )
+
 for origin in origins :
+    # FIXME: multiple origins could be owned by the same branch ?
+    shown_branches.append( origins[0].branch )
     fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(origins[0].branch) , js_branch(origins[0].branch) ) )
 
 while origins :
