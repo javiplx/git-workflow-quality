@@ -2,6 +2,12 @@
 
 import git_workflow_quality
 
+import sys
+
+graph = 'topo'
+if len(sys.argv) > 1 and sys.argv[1] == 'date' :
+    graph = 'date'
+
 commits , order = git_workflow_quality.get_commits()
 
 print

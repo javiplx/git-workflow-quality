@@ -145,9 +145,13 @@ for origin in origins :
     shown_branches.append( origins[0].branch )
     fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(origins[0].branch) , js_branch(origins[0].branch) ) )
 
-while origins :
-    commit = origins.pop(0)
-    forward_plot(commit, origins, fd)
+if len(sys.argv) > 1 and sys.argv[1] == 'date' :
+    order.reverse()
+    chrono_plot(order, fd)
+else :
+    while origins :
+        commit = origins.pop(0)
+        forward_plot(commit, origins, fd)
 
 fd.close()
 
