@@ -102,6 +102,7 @@ class repository :
       output.append( "# initial commits: %s" % len([c for c in self.commits.values() if not c.parent ]) )
       output.append( "Number of merges:  %s" % len([c for c in self.commits.values() if c.parents]) )
       output.append( "Ammended commits:  %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
+      output.append( "Unlabelled heads:  %s" % len([c for c in self.commits.values() if not c.branch and not c.child]) )
       return "\n".join(output)
 
   def set_childs ( self ) :
