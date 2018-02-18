@@ -43,15 +43,38 @@ var gitgraph = new GitGraph(config);
 
 """
 
-def open ( filename='commits.js' ) :
+def graph ( commits , order , mode='topo' , filename='commits.js' ) :
+
+    if not mode in ( 'topo' , 'date' ) :
+        print "ERROR : unknown graph type '%s'" % mode
+        return
+
     fd = open( filename , 'w' )
+
     fd.write( gitgraph_head )
-    return fd
+
+    origins = [ c for c in commits.values() if not c.parent ]
+
+    for origin in origins :
+        # FIXME: multiple origins could be owned by the same branch ?
+        shown_branches.append( origin.branch )
+        fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(origin.branch) , js_branch(origin.branch) ) )
+
+    if mode == 'date' :
+        order.reverse()
+        chrono_plot(commits, order, fd)
+    elif mode == 'topo' :
+        while origins :
+            commit = origins.pop(0)
+            forward_plot(commits, commit, origins, fd)
+
+    fd.close()
+
 
 
 shown_branches = []
 
-def forward_plot ( c , pending , fd=sys.stdout ) :
+def forward_plot ( commits , c , pending , fd=sys.stdout ) :
     first = True
     fd.write( '%s.checkout();\n' % js_varname(c.branch) )
     while c.child :
@@ -93,7 +116,7 @@ def forward_plot ( c , pending , fd=sys.stdout ) :
             if commits[sha] not in pending :
                 pending.append( commits[sha] )
 
-def chrono_plot ( sha_list , fd=sys.stdout) :
+def chrono_plot ( commits , sha_list , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
     current_branch = None
     first = True

@@ -1,4 +1,6 @@
 
+import gitgraphjs
+
 import subprocess
 
 import os

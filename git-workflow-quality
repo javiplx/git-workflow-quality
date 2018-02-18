@@ -4,10 +4,6 @@ import git_workflow_quality
 
 import sys
 
-graph = 'topo'
-if len(sys.argv) > 1 and sys.argv[1] == 'date' :
-    graph = 'date'
-
 commits , order = git_workflow_quality.get_commits()
 
 print
@@ -16,4 +12,7 @@ print "# initial commits: %s" % len([c for c in commits.values() if not c.parent
 print "Number of merges:  %s" % len([c for c in commits.values() if c.parents])
 print "Ammended commits:  %s" % len([c for c in commits.values() if c.author != c.committer and not c.parents])
 print
+
+if len(sys.argv) > 1 :
+    git_workflow_quality.gitgraphjs.graph( commits , order , sys.argv[1] )
 
