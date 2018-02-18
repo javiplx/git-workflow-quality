@@ -7,51 +7,7 @@ import sys
 
 commits , order = git_workflow_quality.get_commits()
 
-
-fd = open( "commits.js" , 'w' )
-
-fd.write( """
-var myTemplateConfig = {
-  colors: [ "#9993FF", "#47E8D4", "#6BDB52", "#F85BB5", "#FFA657", "#F85BB5" ],
-  branch: {
-    lineWidth: 2,
-    spacingX: 40,
-    showLabel: true, // display branch names on graph
-    labelFont: "normal 10pt Arial",
-    labelRotation: 0
-  },
-  commit: {
-    spacingY: -30,
-    dot: {
-      size: 6,
-      lineDash: [2]
-    },
-    message: {
-      font: "normal 12pt Arial"
-    },
-    tooltipHTMLFormatter: function (commit) {
-      return "<b>" + commit.sha1 + "</b>" + ": " + commit.message;
-    }
-  },
-  arrow: {
-    size: 6,
-    offset: 1
-  }
-};
-
-var myTemplate = new GitGraph.Template(myTemplateConfig);
-
-var config = {
-  template: myTemplate, // "blackarrow",
-  reverseArrow: false,
-  orientation: "horizontal",
-  mode: "compact"
-};
-
-var gitgraph = new GitGraph(config);
-
-""" )
-
+fd = git_workflow_quality.gitgraphjs.open()
 
 origins = []
 for c in commits.values() :

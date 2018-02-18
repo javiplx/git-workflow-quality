@@ -1,6 +1,54 @@
 
 import sys
 
+gitgraph_head = """
+var myTemplateConfig = {
+  colors: [ "#9993FF", "#47E8D4", "#6BDB52", "#F85BB5", "#FFA657", "#F85BB5" ],
+  branch: {
+    lineWidth: 2,
+    spacingX: 40,
+    showLabel: true, // display branch names on graph
+    labelFont: "normal 10pt Arial",
+    labelRotation: 0
+  },
+  commit: {
+    spacingY: -30,
+    dot: {
+      size: 6,
+      lineDash: [2]
+    },
+    message: {
+      font: "normal 12pt Arial"
+    },
+    tooltipHTMLFormatter: function (commit) {
+      return "<b>" + commit.sha1 + "</b>" + ": " + commit.message;
+    }
+  },
+  arrow: {
+    size: 6,
+    offset: 1
+  }
+};
+
+var myTemplate = new GitGraph.Template(myTemplateConfig);
+
+var config = {
+  template: myTemplate, // "blackarrow",
+  reverseArrow: false,
+  orientation: "horizontal",
+  mode: "compact"
+};
+
+var gitgraph = new GitGraph(config);
+
+"""
+
+def open ( filename='commits.js' ) :
+    fd = open( filename , 'w' )
+    fd.write( gitgraph_head )
+    return fd
+
+
 shown_branches = []
 
 def forward_plot ( c , pending , fd=sys.stdout ) :
@@ -11,7 +59,7 @@ def forward_plot ( c , pending , fd=sys.stdout ) :
             sha = c.parents[0]
             if commits[sha].branch in shown_branches :
                 first = True
-                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s | %s"});\n' % ( js_varname(commits[sha].branch) , js_varname(c.branch) , c.sha , commits[sha].branch , c.message ) )
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
             else :
                 break
         else :
