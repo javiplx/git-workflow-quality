@@ -117,12 +117,18 @@ class repository :
     for commit in self.commits.values() :
       merged = re.search("Merge pull request #(?P<id>[0-9]*) from (?P<repo>[^/]*)/(?P<source>.*)", commit.message )
       if merged :
+        if not commit.parents :
+          print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
+        else :
           source = merged.group('source').strip("'")
           branches.append( ( commit.parents[0] , source ) )
           self.commits[commit.parents[0]].set_branch( source )
       else :
         merged = re.search("Merge branch (?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
         if merged :
+          if not commit.parents :
+            print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
+          else :
             source = merged.group('source').strip("'")
             branches.append( ( commit.parents[0] , source ) )
             self.commits[commit.parents[0]].set_branch(source)
