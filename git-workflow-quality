@@ -16,4 +16,8 @@ print "# initial commits: %s" % len([c for c in commits.values() if not c.parent
 print "Number of merges:  %s" % len([c for c in commits.values() if c.parents])
 print "Ammended commits:  %s" % len([c for c in commits.values() if c.author != c.committer and not c.parents])
 print
+print "branch group   #commits   #merges"
+print "primary        %8d   %7d" % ( len([c for c in commits.values() if not c.parents and c.branch in git_workflow_quality.primary]) , len([c for c in commits.values() if c.parents and c.branch in git_workflow_quality.primary]) )
+print "topic          %8d   %7d" % ( len([c for c in commits.values() if not c.parents and c.branch not in git_workflow_quality.primary]) , len([c for c in commits.values() if c.parents and c.branch not in git_workflow_quality.primary]) )
+print
 
