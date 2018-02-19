@@ -5,7 +5,7 @@ import git_workflow_quality
 import sys
 
 
-commits , order = git_workflow_quality.get_commits()
+repo = git_workflow_quality.repository()
 
 
 shown_branches = []
@@ -15,9 +15,9 @@ def forward_plot ( c , pending , fd=sys.stdout ) :
     while c.child :
         if c.parents :
             sha = c.parents[0]
-            if commits[sha].branch in shown_branches :
+            if repo.commits[sha].branch in shown_branches :
                 first = True
-                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s | %s"});\n' % ( js_varname(commits[sha].branch) , js_varname(c.branch) , c.sha , commits[sha].branch , c.message ) )
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s | %s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , repo.commits[sha].branch , c.message ) )
             else :
                 break
         else :
@@ -30,37 +30,37 @@ def forward_plot ( c , pending , fd=sys.stdout ) :
         new_branches = False
         for sha in c.forks :
             first = True
-            if not commits[sha].branch in shown_branches :
+            if not repo.commits[sha].branch in shown_branches :
                 new_branches = True
-                fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(commits[sha].branch) , js_branch( commits[sha].branch , len(shown_branches) ) ) )
-                shown_branches.append( commits[sha].branch )
-            if commits[sha] not in pending :
-                pending.append( commits[sha] )
+                fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(repo.commits[sha].branch) , js_branch( repo.commits[sha].branch , len(shown_branches) ) ) )
+                shown_branches.append( repo.commits[sha].branch )
+            if repo.commits[sha] not in pending :
+                pending.append( repo.commits[sha] )
         if new_branches :
             first = True
             fd.write( '%s.checkout();\n' % js_varname(c.branch) )
-        c = commits[c.child]
+        c = repo.commits[c.child]
     else :
         if c.parents :
             sha = c.parents[0]
-            if commits[sha].branch in shown_branches :
-                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+            if repo.commits[sha].branch in shown_branches :
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
         else :
             fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
         for sha in c.forks :
-            if commits[sha] not in pending :
-                pending.append( commits[sha] )
+            if repo.commits[sha] not in pending :
+                pending.append( repo.commits[sha] )
 
 def chrono_plot ( sha_list , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
     current_branch = None
     first = True
     for sha in sha_list :
-        c = commits[sha]
+        c = repo.commits[sha]
         if not c.branch in shown_branches :
             shown_branches.append( c.branch )
-            if c.parent and commits[c.parent].branch != current_branch :
-                fd.write( '%s.checkout();\n' % js_varname(commits[c.parent].branch) )
+            if c.parent and repo.commits[c.parent].branch != current_branch :
+                fd.write( '%s.checkout();\n' % js_varname(repo.commits[c.parent].branch) )
             fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(c.branch) , js_branch( c.branch , len(shown_branches) ) ) )
             first = True
         elif current_branch != c.branch :
@@ -72,10 +72,10 @@ def chrono_plot ( sha_list , fd=sys.stdout) :
                 first = False
                 fd.write( 'gitgraph.commit({sha1: "%s", message: "%s"});\n' % ( c.sha , c.message ) )
         else :
-            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(commits[c.parents[0]].branch) , js_varname(c.branch) , c.sha , c.message ) )
-            if not commits[c.parents[0]].child :
-                if commits[c.parents[0]].branch in shown_branches :
-                    shown_branches.remove( commits[c.parents[0]].branch )
+            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[c.parents[0]].branch) , js_varname(c.branch) , c.sha , c.message ) )
+            if not repo.commits[c.parents[0]].child :
+                if repo.commits[c.parents[0]].branch in shown_branches :
+                    shown_branches.remove( repo.commits[c.parents[0]].branch )
 
 def js_varname ( var ) :
     return "branch_" + var.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
@@ -136,7 +136,7 @@ var gitgraph = new GitGraph(config);
 
 
 origins = []
-for c in commits.values() :
+for c in repo.commits.values() :
     if not c.parent :
         origins.append( c )
 
@@ -146,8 +146,7 @@ for origin in origins :
     fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(origins[0].branch) , js_branch(origins[0].branch) ) )
 
 if len(sys.argv) > 1 and sys.argv[1] == 'date' :
-    order.reverse()
-    chrono_plot(order, fd)
+    chrono_plot(repo.order, fd)
 else :
     while origins :
         commit = origins.pop(0)
