@@ -114,14 +114,17 @@ class repository :
           if self.branches.has_key(branch) :
               output.append( "%14s %8d   %7d" % ( branch , len([c for c in self.branches[branch] if not c.parents]) , len([c for c in self.branches[branch] if c.parents]) ) )
       n , m = 0 , 0
+      l = 0
       output.append( "" )
       branches = [ b for b in self.branches.keys() if b not in repository.primary ]
       output.append( "topic          (%d branches)" % ( len(branches) ) )
       output.append( "               %8d   %7d" % ( len([c for c in self.commits.values() if not c.parents and c.branch not in repository.primary]) , len([c for c in self.commits.values() if c.parents and c.branch not in repository.primary]) ) )
       for branch in branches :
+          l +=  len([c for c in self.branches[branch] if not c.parents])
           n +=  100.0 * len([c for c in self.branches[branch] if not c.parents]) / len(self.branches[branch])
           m +=  100.0 * len([c for c in self.branches[branch] if c.parents]) / len(self.branches[branch])
       output.append( "%14s %8d%%  %7d%%" % ( "branch avg" , n/len(branches) , m/len(branches) ) )
+      output.append( "     %8.1f avg commits each branch" %  ( float(l) / len(branches) ) )
       return "\n".join(output)
 
   def set_childs ( self ) :
