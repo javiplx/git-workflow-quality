@@ -116,7 +116,11 @@ class repository :
       n , m = 0 , 0
       l = 0
       output.append( "" )
-      branches = [ b for b in self.branches.keys() if b not in repository.primary ]
+      releases = [ b for b in self.branches.keys() if b not in repository.primary and b.startswith('release') ]
+      if releases :
+          output.append( "release        (%d branches)" % ( len(releases) ) )
+      output.append( "" )
+      branches = [ b for b in self.branches.keys() if b not in repository.primary and not b.startswith('release') ]
       output.append( "topic          (%d branches)" % ( len(branches) ) )
       output.append( "               %8d   %7d" % ( len([c for c in self.commits.values() if not c.parents and c.branch not in repository.primary]) , len([c for c in self.commits.values() if c.parents and c.branch not in repository.primary]) ) )
       for branch in branches :
