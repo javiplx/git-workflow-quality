@@ -53,15 +53,20 @@ class commit :
 
 def get_branches () :
     branches = []
-    if os.path.isfile(".git/info/refs") :
-        with open(".git/info/refs") as fd :
+    info = "info/refs"
+    heads = "refs/heads"
+    if os.path.isdir(".git") :
+        info = os.path.join( ".git" , info )
+        heads = os.path.join( ".git" , "refs/remotes/origin" )
+    if os.path.isfile(info) :
+        with open(info) as fd :
             line = fd.readline()
             while line[:-1] :
                 items = line[:-1].split(None, 2)
                 if items[1].startswith('refs/heads/') :
                     branches.append( ( items[0] , items[1][11:] ) )
                 line = fd.readline()
-    for root, dirs, files in os.walk(".git/refs/heads") :
+    for root, dirs, files in os.walk(heads) :
         for f in files:
             filename = os.path.join(root, f)
             fd = open(filename)
