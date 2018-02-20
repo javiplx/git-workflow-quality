@@ -107,7 +107,9 @@ class repository :
       output.append( "Unlabelled heads:  %s" % len([c for c in self.commits.values() if not c.branch and not c.child]) )
       output.append( "" )
       output.append( "branch group   #commits   #merges" )
-      output.append( "primary        %8d   %7d" % ( len([c for c in self.commits.values() if not c.parents and c.branch in repository.primary]) , len([c for c in self.commits.values() if c.parents and c.branch in repository.primary]) ) )
+      output.append( "primary" )
+      for branch in repository.primary :
+          output.append( "%-14s %8d   %7d" % ( branch , len([c for c in self.commits.values() if not c.parents and c.branch == branch]) , len([c for c in self.commits.values() if c.parents and c.branch == branch]) ) )
       output.append( "topic          %8d   %7d" % ( len([c for c in self.commits.values() if not c.parents and c.branch not in repository.primary]) , len([c for c in self.commits.values() if c.parents and c.branch not in repository.primary]) ) )
       return "\n".join(output)
 
