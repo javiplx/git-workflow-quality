@@ -111,7 +111,8 @@ class repository :
       output.append( "branch group   #commits   #merges" )
       output.append( "primary" )
       for branch in repository.primary :
-          output.append( "%14s %8d   %7d" % ( branch , len([c for c in self.commits.values() if not c.parents and c.branch == branch]) , len([c for c in self.commits.values() if c.parents and c.branch == branch]) ) )
+          if self.branches.has_key(branch) :
+              output.append( "%14s %8d   %7d" % ( branch , len([c for c in self.branches[branch] if not c.parents]) , len([c for c in self.branches[branch] if c.parents]) ) )
       output.append( "topic          %8d   %7d" % ( len([c for c in self.commits.values() if not c.parents and c.branch not in repository.primary]) , len([c for c in self.commits.values() if c.parents and c.branch not in repository.primary]) ) )
       return "\n".join(output)
 
