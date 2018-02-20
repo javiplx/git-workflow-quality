@@ -77,6 +77,7 @@ class repository :
 
     self.commits = {}
     self.order = []
+    self.branches = {}
 
     cmd = subprocess.Popen( 'git log --all --format="%H %ae %ce %s"' , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -97,6 +98,7 @@ class repository :
 
     self.set_childs()
 
+    self.set_branches()
 
   def report( self ) :
       output = []
@@ -109,7 +111,7 @@ class repository :
       output.append( "branch group   #commits   #merges" )
       output.append( "primary" )
       for branch in repository.primary :
-          output.append( "%-14s %8d   %7d" % ( branch , len([c for c in self.commits.values() if not c.parents and c.branch == branch]) , len([c for c in self.commits.values() if c.parents and c.branch == branch]) ) )
+          output.append( "%14s %8d   %7d" % ( branch , len([c for c in self.commits.values() if not c.parents and c.branch == branch]) , len([c for c in self.commits.values() if c.parents and c.branch == branch]) ) )
       output.append( "topic          %8d   %7d" % ( len([c for c in self.commits.values() if not c.parents and c.branch not in repository.primary]) , len([c for c in self.commits.values() if c.parents and c.branch not in repository.primary]) ) )
       return "\n".join(output)
 
@@ -180,4 +182,12 @@ class repository :
             child = [ sha for sha in c.forks if self.commits[sha].branch == c.branch ]
             if child :
                  c.set_child( child[0] )
+
+  def set_branches ( self ) :
+
+      for sha in self.order :
+          commit = self.commits[sha]
+          if not self.branches.has_key( commit.branch ) :
+              self.branches[commit.branch] = []
+          self.branches[commit.branch].append( commit )
 
