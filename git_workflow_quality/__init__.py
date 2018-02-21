@@ -33,7 +33,7 @@ class commit :
         if self.branch :
             if self.branch in repository.primary :
                 return
-            if not branch in repository.primary :
+            if not branch in repository.primary and branch != self.branch :
                 raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
         self.branch = branch
 
