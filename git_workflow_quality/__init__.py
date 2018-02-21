@@ -119,6 +119,11 @@ class repository :
       releases = [ b for b in self.branches.keys() if b not in repository.primary and b.startswith('release') ]
       if releases :
           output.append( "release        (%d branches)" % ( len(releases) ) )
+          for release in releases :
+              commits = self.branches[release]
+              output.append( "    %16s %4d" % ( release[8:] , len(commits) ) )
+              if [c for c in commits if not c.parents] :
+                  output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
       output.append( "" )
       branches = [ b for b in self.branches.keys() if b not in repository.primary and not b.startswith('release') ]
       output.append( "topic          (%d branches)" % ( len(branches) ) )
