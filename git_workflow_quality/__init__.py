@@ -72,7 +72,7 @@ def get_branches () :
         for f in files:
             filename = os.path.join(root, f)
             fd = open(filename)
-            branches.append( ( fd.readline()[:-1] , filename[len(heads)+1:] ) )
+            branches.append( ( fd.readline()[:-1] , filename[len(heads)+1:].replace('\\', '/') ) )
             fd.close()
     return branches
 
@@ -85,17 +85,17 @@ class repository :
     self.commits = {}
     self.order = []
 
-    cmd = subprocess.Popen( 'git log --all --format="%H %ae %ce %s"' , stdout=subprocess.PIPE )
+    cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H %ae %ce %s"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
     while line[:-1] :
-        sha , author , committer , message = line[:-1].split(None, 3)
+        sha , author , committer , message = line[:-1].strip('"').split(None, 3)
         self.commits[sha] = commit( sha , author , committer , message )
         line = cmd.stdout.readline()
 
-    cmd = subprocess.Popen( 'git log --all --date-order --reverse --format="%H %at %ct %P"' , stdout=subprocess.PIPE )
+    cmd = subprocess.Popen( ['git', 'log', '--all', '--date-order', '--reverse', '--format="%H %at %ct %P"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
     while line[:-1] :
-        sha , params = line[:-1].split(None, 1)
+        sha , params = line[:-1].strip('"').split(None, 1)
         self.commits[sha].set_params(params.split(None, 4))
         if self.commits[sha].parent and self.commits[sha].parent not in self.order :
             raise Exception( "Incorrect input ordering" )
