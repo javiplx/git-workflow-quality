@@ -1,6 +1,8 @@
 
 import sys
 
+shown_branches = []
+
 gitgraph_head = """
 var myTemplateConfig = {
   colors: [ "#9993FF", "#47E8D4", "#6BDB52", "#F85BB5", "#FFA657", "#F85BB5" ],
@@ -43,6 +45,7 @@ var gitgraph = new GitGraph(config);
 
 """
 
+
 def graph ( repo , mode='topo' , filename='commits.js' ) :
 
     if not mode in ( 'topo' , 'date' ) :
@@ -70,18 +73,20 @@ def graph ( repo , mode='topo' , filename='commits.js' ) :
     fd.close()
 
 
-shown_branches = []
-
 def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     first = True
     fd.write( '%s.checkout();\n' % js_varname(c.branch) )
+    current_branch = c.branch
     while c.child :
         if c.parents :
             sha = c.parents[0]
-            if repo.commits[sha].branch in shown_branches :
+            if current_branch == repo.commits[sha].branch :
                 first = True
                 fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+                pending.remove( c )
             else :
+                if c not in pending :
+                    pending.append( c )
                 break
         else :
             if first :
@@ -108,8 +113,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     else :
         if c.parents :
             sha = c.parents[0]
-            if repo.commits[sha].branch in shown_branches :
-                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
         else :
             fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
         for sha in c.forks :
