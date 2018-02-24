@@ -98,15 +98,26 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             elif c.child and repo.commits[c.child].parents :
                 fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
         new_branches = False
+        has_merges = False
         for sha in c.forks :
             first = True
             if not repo.commits[sha].branch in shown_branches :
                 new_branches = True
                 fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(repo.commits[sha].branch) , js_branch( repo.commits[sha].branch , len(shown_branches) ) ) )
                 shown_branches.append( repo.commits[sha].branch )
-            if repo.commits[sha] not in pending :
-                pending.append( repo.commits[sha] )
-        if new_branches :
+                if repo.commits[sha] not in pending :
+                    pending.append( repo.commits[sha] )
+            else :
+                has_merges = True
+                target = repo.commits[sha]
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(c.branch) , js_varname(target.branch) , sha , target.message ) )
+                fd.write( '%s.checkout();\n' % js_varname(c.branch) )
+                pending.remove( target )
+                pending.append( repo.commits[target.child] )
+        if has_merges :
+            pending.append( repo.commits[c.child] )
+            break
+        elif new_branches :
             first = True
             fd.write( '%s.checkout();\n' % js_varname(c.branch) )
         c = repo.commits[c.child]
@@ -114,6 +125,8 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
         if c.parents :
             sha = c.parents[0]
             fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+            if c in pending :
+                pending.remove( c )
         else :
             fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
         for sha in c.forks :
