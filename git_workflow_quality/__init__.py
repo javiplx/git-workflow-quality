@@ -72,6 +72,7 @@ def get_branches () :
                 line = fd.readline()
     for root, dirs, files in os.walk(heads) :
         for f in files:
+            if f == "HEAD" : continue
             filename = os.path.join(root, f)
             fd = open(filename)
             branches.append( ( fd.readline()[:-1] , filename[len(heads)+1:].replace('\\', '/') ) )
