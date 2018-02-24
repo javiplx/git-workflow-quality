@@ -92,6 +92,8 @@ def forward_plot ( commits , c , pending , fd=sys.stdout ) :
             elif c.forks :
                 first = True
                 fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
+            elif c.child and commits[c.child].parents :
+                fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
         new_branches = False
         for sha in c.forks :
             first = True
@@ -135,6 +137,8 @@ def chrono_plot ( commits , sha_list , fd=sys.stdout) :
         if not c.parents :
             if first or c.forks :
                 first = False
+                fd.write( 'gitgraph.commit({sha1: "%s", message: "%s"});\n' % ( c.sha , c.message ) )
+            elif c.child and commits[c.child].parents :
                 fd.write( 'gitgraph.commit({sha1: "%s", message: "%s"});\n' % ( c.sha , c.message ) )
         else :
             fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(commits[c.parents[0]].branch) , js_varname(c.branch) , c.sha , c.message ) )
