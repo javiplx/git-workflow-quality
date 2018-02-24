@@ -4,11 +4,10 @@ import git_workflow_quality
 
 import sys
 
-graph = 'topo'
-if len(sys.argv) > 1 and sys.argv[1] == 'date' :
-    graph = 'date'
-
 repo = git_workflow_quality.repository()
 
 print repo.report()
+
+if len(sys.argv) > 1 :
+    git_workflow_quality.gitgraphjs.graph( repo , sys.argv[1] )
 
