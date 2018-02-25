@@ -69,6 +69,8 @@ def graph ( repo , mode='topo' , filename='commits.js' ) :
         while origins :
             commit = origins.pop(0)
             forward_plot(repo, commit, origins, fd)
+            if len(origins) > 1 :
+                origins.sort(key=lambda x : len(x.parents)+len(x.forks))
 
     fd.close()
 
