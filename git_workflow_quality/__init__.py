@@ -188,4 +188,6 @@ class repository :
             child = [ sha for sha in c.forks if self.commits[sha].branch == c.branch ]
             if child :
                  c.set_child( child[0] )
+            else :
+                 c.set_child( sorted([ self.commits[sha] for sha in c.forks ], key=lambda x : x.committer_date)[0].sha )
 
