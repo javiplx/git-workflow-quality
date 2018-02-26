@@ -69,8 +69,6 @@ def graph ( repo , mode='topo' , filename='commits.js' ) :
         while origins :
             commit = origins.pop(0)
             forward_plot(repo, commit, origins, fd)
-            if len(origins) > 1 :
-                origins.sort(key=lambda x : len(x.parents)+len(x.forks))
 
     fd.close()
 
@@ -82,7 +80,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     while c.child :
         if c.parents :
             sha = c.parents[0]
-            if current_branch == repo.commits[sha].branch or c.forks :
+            if c.forks :
                 first = True
                 for sha in c.forks :
                     for p in pending :
@@ -93,9 +91,14 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                             pending.remove(p)
                             if p.child :
                                 pending.append(repo.commits[p.child])
+                            pending.remove( c )
                 fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
-                pending.remove( c )
+                if c in pending :
+                    pending.remove( c )
             else :
+              if repo.commits[sha].branch not in shown_branches :
+                  fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+              else :
                 if c not in pending :
                     pending.append( c )
                 break
@@ -109,30 +112,30 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             elif c.child and repo.commits[c.child].parents :
                 fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
         new_branches = False
-        has_merges = False
         for sha in c.forks :
-            first = True
-            if not repo.commits[sha].branch in shown_branches :
+            if not repo.commits[sha].parents :
                 new_branches = True
                 fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(repo.commits[sha].branch) , js_branch( repo.commits[sha].branch , len(shown_branches) ) ) )
                 shown_branches.append( repo.commits[sha].branch )
                 if repo.commits[sha] not in pending :
                     pending.append( repo.commits[sha] )
             else :
-                has_merges = True
-                target = repo.commits[sha]
+              target = repo.commits[sha]
+              if target not in pending :
+                    for p in pending :
+                        if p.sha == target.parent :
+                            break
+              else :
                 fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(c.branch) , js_varname(target.branch) , sha , target.message ) )
                 fd.write( '%s.checkout();\n' % js_varname(c.branch) )
                 pending.remove( target )
                 pending.append( repo.commits[target.child] )
-        if has_merges :
-            pending.append( repo.commits[c.child] )
-            break
-        elif new_branches :
+        if new_branches :
             first = True
             fd.write( '%s.checkout();\n' % js_varname(c.branch) )
         c = repo.commits[c.child]
     else :
+        shown_branches.remove( current_branch )
         if c.parents :
             sha = c.parents[0]
             fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
