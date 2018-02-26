@@ -45,36 +45,23 @@ cd ${TMPREPO}
 
 make_commits master 1
 
-make_commits branch1 1
+make_commits develop 1
 
 make_commits master 2 2
 
-make_commits branch2 2
+make_commits develop 2 2
 
-make_commits master 4 3
+make_commits topic 1 0 develop
 
-make_commits branch3 1
+make_merge topic master
 
-make_commits master 5 5
+make_merge topic develop
 
-make_merge branch2 branch1
+make_commits master 3 3
 
-make_commits branch1 2 2
+make_commits develop 3 3
 
-make_commits branch2 4 4
-
-make_merge branch1 branch3
-
-make_commits branch3 2 2
-
-make_merge branch2 master
-
-make_commits branch3 2 2
-
-make_commits master 6 6
-
-git push origin master branch1 branch2 branch3
+git push origin master develop topic
 
 cd ..
 rm -rf ${TMPREPO}
-
