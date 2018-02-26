@@ -24,7 +24,7 @@ make_merge() {
   target=$2
 
   git checkout $target
-  git merge $source -m 'merge $source into $target'
+  git merge $source -m "Merge branch $source into $target"
 
   sleep 2
   }
@@ -32,10 +32,15 @@ make_merge() {
 
 TMPREPO=testrepo_$RANDOM
 
-mkdir ${TMPREPO}
-cd ${TMPREPO}
+rm -rf testrepo.git
+mkdir testrepo.git
+cd testrepo.git
+git init --bare
+cd ..
 
-git init
+
+git clone testrepo.git ${TMPREPO}
+cd ${TMPREPO}
 
 make_commits master 1
 
@@ -66,4 +71,9 @@ make_merge branch2 master
 make_commits branch3 2 2
 
 make_commits master 6 6
+
+git push origin master branch1 branch2 branch3
+
+cd ..
+rm -rf ${TMPREPO}
 

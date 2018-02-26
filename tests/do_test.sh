@@ -7,7 +7,7 @@ if [ ! -d "$1" ] ; then
 
 cd $1
 
-python ../../parse_commits.py
+python ../../git-workflow-quality date
 
 cat <<HTML > index.html
 <!DOCTYPE html>
