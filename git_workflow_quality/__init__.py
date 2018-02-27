@@ -53,8 +53,9 @@ class commit :
 
 class branch ( list ) :
 
-    def __init__ ( self , branchname ) :
+    def __init__ ( self , branchname , repo ) :
         self.name = branchname
+        self.repo = repo
         list.__init__( self )
 
     def commits ( self ) :
@@ -66,8 +67,23 @@ class branch ( list ) :
     def stats ( self ) :
         return len(self), len(self.commits()), len(self.merges())
 
-    def report ( self ) :
-        return "%14s %8d   %7d" % ( self.name , len(self.commits()) , len(self.merges()) )
+    def source ( self ) :
+        source = self[0].parent
+        if not source :
+            return '<Initial>'
+        return self.repo.commits[source].branch
+
+    def target ( self ) :
+        target = self[-1].child
+        if not target :
+            return '<Final>'
+        return self.repo.commits[target].branch
+
+    def report ( self , branches=False ) :
+        output ="%14s %8d   %7d" % ( self.name , len(self.commits()) , len(self.merges()) )
+        if branches :
+            output += "    %20s - %-20s" % ( self.source() , self.target() )
+        return output
 
 
 def get_branches () :
@@ -134,7 +150,7 @@ class repository :
       output.append( "primary" )
       for branch in repository.primary :
           if self.branches.has_key(branch) :
-              output.append( self.branch(branch).report() )
+              output.append( self.branch(branch).report(True) )
       n , m = 0 , 0
       l = 0
       output.append( "" )
@@ -143,7 +159,7 @@ class repository :
           output.append( "release        (%d branches)" % ( len(releases) ) )
           for release in releases :
               commits = self.branch(release)
-              output.append( self.branch(release).report() )
+              output.append( self.branch(release).report(True) )
               if [c for c in commits if not c.parents] :
                   output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
       output.append( "" )
@@ -232,6 +248,6 @@ class repository :
       for sha in self.order :
           commit = self.commits[sha]
           if not self.branches.has_key( commit.branch ) :
-              self.branches[commit.branch] = branch(commit.branch)
+              self.branches[commit.branch] = branch(commit.branch, self)
           self.branch(commit.branch).append( commit )
 
