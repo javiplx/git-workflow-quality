@@ -66,6 +66,9 @@ class branch ( list ) :
     def stats ( self ) :
         return len(self), len(self.commits()), len(self.merges())
 
+    def report ( self ) :
+        return "%14s %8d   %7d" % ( self.name , len(self.commits()) , len(self.merges()) )
+
 
 def get_branches () :
     branches = []
@@ -131,7 +134,7 @@ class repository :
       output.append( "primary" )
       for branch in repository.primary :
           if self.branches.has_key(branch) :
-              output.append( "%14s %8d   %7d" % ( branch , len(self.branch(branch).commits()) , len(self.branch(branch).merges()) ) )
+              output.append( self.branch(branch).report() )
       n , m = 0 , 0
       l = 0
       output.append( "" )
@@ -140,7 +143,7 @@ class repository :
           output.append( "release        (%d branches)" % ( len(releases) ) )
           for release in releases :
               commits = self.branch(release)
-              output.append( "    %16s %4d" % ( release[8:] , len(commits) ) )
+              output.append( self.branch(release).report() )
               if [c for c in commits if not c.parents] :
                   output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
       output.append( "" )
