@@ -79,10 +79,21 @@ class branch ( list ) :
             return '<Final>'
         return self.repo.commits[target].branch
 
+    def relations ( self ) :
+        sources = []
+        targets = []
+        for c in self :
+            for sha in c.parents :
+                sources.append( self.repo.commits[sha].branch )
+            for sha in c.forks :
+                targets.append( self.repo.commits[sha].branch )
+        return sources , targets
+
     def report ( self , branches=False ) :
-        output ="%14s %8d   %7d" % ( self.name , len(self.commits()) , len(self.merges()) )
+        output ="%25s %8d   %7d" % ( self.name[:25] , len(self.commits()) , len(self.merges()) )
         if branches :
-            output += "    %20s - %-20s" % ( self.source() , self.target() )
+            sources = self.relations()[0]
+            output += "    %20s %+03d - %-20s" % ( self.source()[:20] , len(sources) , self.target()[:20] )
         return output
 
 
