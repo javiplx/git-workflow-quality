@@ -90,11 +90,11 @@ class branch ( list ) :
         return sources , targets
 
     def report ( self , branches=False ) :
-        output ="%25s %8d   %7d" % ( self.name[:25] , len(self.commits()) , len(self.merges()) )
+        output = [ self.name[:25] , len(self.commits()) , len(self.merges()) ]
         if branches :
             sources = self.relations()[0]
-            output += "    %20s %+03d - %-20s" % ( self.source()[:20] , len(sources) , self.target()[:20] )
-        return output
+            output.extend( ( self.source() , len(sources) , self.target() ) )
+        return tuple(output)
 
 
 def get_branches () :
@@ -149,41 +149,58 @@ class repository :
   def branch ( self , branchname ) :
       return self.branches[branchname]
 
-  def report( self ) :
+  def report( self , details=False) :
       output = []
       output.append( "Number of commits: %s" % len(self.commits) )
       output.append( "# initial commits: %s" % len([c for c in self.commits.values() if not c.parent ]) )
       output.append( "Number of merges:  %s" % len([c for c in self.commits.values() if c.parents]) )
       output.append( "Ammended commits:  %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
       output.append( "Unlabelled heads:  %s" % len([c for c in self.commits.values() if not c.branch and not c.child]) )
+
+      report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
-      output.append( "branch group   #commits   #merges" )
-      output.append( "primary" )
+      output.append( "%-25s %8s   %7s" % ( 'PRIMARY' , '#commits' , '#merges' ) )
       for branch in repository.primary :
           if self.branches.has_key(branch) :
-              output.append( self.branch(branch).report(True) )
-      n , m = 0 , 0
-      l = 0
-      output.append( "" )
+              output.append( report_fmt % self.branch(branch).report(True) )
+
       releases = [ b for b in self.branches if b not in repository.primary and b.startswith('release') ]
       if releases :
-          output.append( "release        (%d branches)" % ( len(releases) ) )
+          output.append( "" )
+          output.append( "%-10s %8s   %7s    (%d branches)" % ( 'RELEASE' , '#commits' , '#merges' , len(releases) ) )
+          stats = []
           for release in releases :
-              commits = self.branch(release)
-              output.append( self.branch(release).report(True) )
-              if [c for c in commits if not c.parents] :
-                  output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
-      output.append( "" )
+              stats.append ( self.branch(release).stats() )
+          output.append( "           %8d   %7d" % ( sum([stat[1] for stat in stats]) , sum([stat[2] for stat in stats]) ) )
+          L = sum( [ stat[1] for stat in stats ] )
+          N = sum( [ 100*stat[1]/stat[0] for stat in stats ] )
+          M = sum( [ 100*stat[2]/stat[0] for stat in stats ] )
+          output.append( "%14s %8d%%  %7d%%" % ( "branch avg" , N/len(stats) , M/len(stats) ) )
+          output.append( "    %8.1f avg commits each branch" %  ( float(L) / len(releases) ) )
+          if details :
+              for release in releases :
+                  output.append( report_fmt % self.branch(release).report(True) )
+                  commits = self.branch(release)
+                  if [c for c in commits if not c.parents] :
+                      output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
+
       branches = [ b for b in self.branches if b not in repository.primary and not b.startswith('release') ]
-      output.append( "topic          (%d branches)" % ( len(branches) ) )
-      output.append( "               %8d   %7d" % ( len([c for c in self.commits.values() if not c.parents and c.branch not in repository.primary]) , len([c for c in self.commits.values() if c.parents and c.branch not in repository.primary]) ) )
-      for branch in branches :
-          stats =  self.branch(branch).stats()
-          l +=  stats[1]
-          n += 100.0 * stats[1] / len(self.branch(branch))
-          m += 100.0 * stats[2] / len(self.branch(branch))
-      output.append( "%14s %8d%%  %7d%%" % ( "branch avg" , n/len(branches) , m/len(branches) ) )
-      output.append( "     %8.1f avg commits each branch" %  ( float(l) / len(branches) ) )
+      if branches :
+          output.append( "" )
+          output.append( "%-10s %8s   %7s   (%d branches)" % ( 'TOPIC' , '#commits' , '#merges' , len(branches) ) )
+          stats = []
+          for branch in branches :
+              stats.append ( self.branch(branch).stats() )
+          output.append( "           %8d   %7d" % ( sum([stat[1] for stat in stats]) , sum([stat[2] for stat in stats]) ) )
+          L = sum( [ stat[1] for stat in stats ] )
+          N = sum( [ 100.0*stat[1]/stat[0] for stat in stats ] )
+          M = sum( [ 100.0*stat[2]/stat[0] for stat in stats ] )
+          output.append( "%14s %8d%%  %7d%%" % ( "branch avg" , N/len(stats) , M/len(stats) ) )
+          output.append( "    %8.1f avg commits each branch" %  ( float(L) / len(branches) ) )
+          if details :
+              for branch in branches :
+                  output.append( report_fmt % self.branch(branch).report(True) )
+
       return "\n".join(output)
 
   def set_childs ( self ) :
