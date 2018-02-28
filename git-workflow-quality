@@ -2,12 +2,20 @@
 
 import git_workflow_quality
 
+import argparse
 import sys
 
-repo = git_workflow_quality.repository()
+if __name__ == '__main__' :
 
-print repo.report()
+    parser = argparse.ArgumentParser(description='Extract simple analytics from git repository')
+    parser.add_argument('--detailed', action='store_true', help='Show per-branch statistics')
+    parser.add_argument('--graph', choices=['topo', 'date'], help='Generate gitgraphjs file')
+    args = parser.parse_args()
 
-if len(sys.argv) > 1 :
-    git_workflow_quality.gitgraphjs.graph( repo , sys.argv[1] )
+    repo = git_workflow_quality.repository()
+
+    print repo.report(args.detailed)
+
+    if args.graph :
+        git_workflow_quality.gitgraphjs.graph( repo , args.graph )
 

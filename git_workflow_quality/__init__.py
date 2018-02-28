@@ -160,7 +160,7 @@ class repository :
       return self.branches[branchname]
 
   def report( self , details=False) :
-      output = []
+      output = ['']
       output.append( "Number of commits: %s" % len(self.commits) )
       output.append( "# initial commits: %s" % len([c for c in self.commits.values() if not c.parent ]) )
       output.append( "Number of merges:  %s" % len([c for c in self.commits.values() if c.parents]) )
@@ -185,9 +185,9 @@ class repository :
           L = sum( [ stat[1] for stat in stats ] )
           N = sum( [ 100*stat[1]/stat[0] for stat in stats ] )
           M = sum( [ 100*stat[2]/stat[0] for stat in stats ] )
-          output.append( "%14s %8d%%  %7d%%" % ( "branch avg" , N/len(stats) , M/len(stats) ) )
-          output.append( "    %8.1f avg commits each branch" %  ( float(L) / len(releases) ) )
+          output.append( "           %8d%%  %7d%%  ; %6.1f per branch" % ( N/len(stats) , M/len(stats) , float(L) / len(releases) ) )
           if details :
+              output.append( "     -----" )
               for release in releases :
                   output.append( report_fmt % self.branch(release).report(True) )
                   commits = self.branch(release)
@@ -205,9 +205,9 @@ class repository :
           L = sum( [ stat[1] for stat in stats ] )
           N = sum( [ 100.0*stat[1]/stat[0] for stat in stats ] )
           M = sum( [ 100.0*stat[2]/stat[0] for stat in stats ] )
-          output.append( "%14s %8d%%  %7d%%" % ( "branch avg" , N/len(stats) , M/len(stats) ) )
-          output.append( "    %8.1f avg commits each branch" %  ( float(L) / len(branches) ) )
+          output.append( "           %8d%%  %7d%%  ; %6.1f per branch" % ( N/len(stats) , M/len(stats) , float(L) / len(branches) ) )
           if details :
+              output.append( "     -----" )
               for branch in branches :
                   output.append( report_fmt % self.branch(branch).report(True) )
 

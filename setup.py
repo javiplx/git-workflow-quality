@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name = 'git-workflow-quality',
-    version = '0.9',
+    version = '0.99',
     description = 'Quality assessment of git workflows & repositories',
     author = 'Javier Palacios',
     author_email = 'javiplx@gmail.com',
