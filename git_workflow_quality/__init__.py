@@ -53,6 +53,52 @@ class commit :
         return "%-20s %s : %40s/%s %s | %s :: %s" % ( self.branch[:20] , self.sha , '<None>' , self.child , parents , forks , self.message )
 
 
+class branch ( list ) :
+
+    def __init__ ( self , branchname , repo ) :
+        self.name = branchname
+        self.repo = repo
+        list.__init__( self )
+
+    def commits ( self ) :
+        return [c for c in self if not c.parents]
+
+    def merges ( self ) :
+        return [c for c in self if c.parents]
+
+    def stats ( self ) :
+        return len(self), len(self.commits()), len(self.merges())
+
+    def source ( self ) :
+        source = self[0].parent
+        if not source :
+            return '<Initial>'
+        return self.repo.commits[source].branch
+
+    def target ( self ) :
+        target = self[-1].child
+        if not target :
+            return '<Final>'
+        return self.repo.commits[target].branch
+
+    def relations ( self ) :
+        sources = []
+        targets = []
+        for c in self :
+            for sha in c.parents :
+                sources.append( self.repo.commits[sha].branch )
+            for sha in c.forks :
+                targets.append( self.repo.commits[sha].branch )
+        return sources , targets
+
+    def report ( self , branches=False ) :
+        output = [ self.name[:25] , len(self.commits()) , len(self.merges()) ]
+        if branches :
+            sources = self.relations()[0]
+            output.extend( ( self.source() , len(sources) , self.target() ) )
+        return tuple(output)
+
+
 def get_branches () :
     branches = []
     refs = "refs/heads"
@@ -87,6 +133,7 @@ class repository :
 
     self.commits = {}
     self.order = []
+    self.branches = {}
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H %ae %ce %s"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -107,18 +154,63 @@ class repository :
 
     self.set_childs()
 
+    self.set_branches()
 
-  def report( self ) :
+  def branch ( self , branchname ) :
+      return self.branches[branchname]
+
+  def report( self , details=False) :
       output = []
       output.append( "Number of commits: %s" % len(self.commits) )
       output.append( "# initial commits: %s" % len([c for c in self.commits.values() if not c.parent ]) )
       output.append( "Number of merges:  %s" % len([c for c in self.commits.values() if c.parents]) )
       output.append( "Ammended commits:  %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
       output.append( "Unlabelled heads:  %s" % len([c for c in self.commits.values() if not c.branch and not c.child]) )
+
+      report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
-      output.append( "branch group   #commits   #merges" )
-      output.append( "primary        %8d   %7d" % ( len([c for c in self.commits.values() if not c.parents and c.branch in repository.primary]) , len([c for c in self.commits.values() if c.parents and c.branch in repository.primary]) ) )
-      output.append( "topic          %8d   %7d" % ( len([c for c in self.commits.values() if not c.parents and c.branch not in repository.primary]) , len([c for c in self.commits.values() if c.parents and c.branch not in repository.primary]) ) )
+      output.append( "%-25s %8s   %7s" % ( 'PRIMARY' , '#commits' , '#merges' ) )
+      for branch in repository.primary :
+          if self.branches.has_key(branch) :
+              output.append( report_fmt % self.branch(branch).report(True) )
+
+      releases = [ b for b in self.branches if b not in repository.primary and b.startswith('release') ]
+      if releases :
+          output.append( "" )
+          output.append( "%-10s %8s   %7s    (%d branches)" % ( 'RELEASE' , '#commits' , '#merges' , len(releases) ) )
+          stats = []
+          for release in releases :
+              stats.append ( self.branch(release).stats() )
+          output.append( "           %8d   %7d" % ( sum([stat[1] for stat in stats]) , sum([stat[2] for stat in stats]) ) )
+          L = sum( [ stat[1] for stat in stats ] )
+          N = sum( [ 100*stat[1]/stat[0] for stat in stats ] )
+          M = sum( [ 100*stat[2]/stat[0] for stat in stats ] )
+          output.append( "%14s %8d%%  %7d%%" % ( "branch avg" , N/len(stats) , M/len(stats) ) )
+          output.append( "    %8.1f avg commits each branch" %  ( float(L) / len(releases) ) )
+          if details :
+              for release in releases :
+                  output.append( report_fmt % self.branch(release).report(True) )
+                  commits = self.branch(release)
+                  if [c for c in commits if not c.parents] :
+                      output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
+
+      branches = [ b for b in self.branches if b not in repository.primary and not b.startswith('release') ]
+      if branches :
+          output.append( "" )
+          output.append( "%-10s %8s   %7s   (%d branches)" % ( 'TOPIC' , '#commits' , '#merges' , len(branches) ) )
+          stats = []
+          for branch in branches :
+              stats.append ( self.branch(branch).stats() )
+          output.append( "           %8d   %7d" % ( sum([stat[1] for stat in stats]) , sum([stat[2] for stat in stats]) ) )
+          L = sum( [ stat[1] for stat in stats ] )
+          N = sum( [ 100.0*stat[1]/stat[0] for stat in stats ] )
+          M = sum( [ 100.0*stat[2]/stat[0] for stat in stats ] )
+          output.append( "%14s %8d%%  %7d%%" % ( "branch avg" , N/len(stats) , M/len(stats) ) )
+          output.append( "    %8.1f avg commits each branch" %  ( float(L) / len(branches) ) )
+          if details :
+              for branch in branches :
+                  output.append( report_fmt % self.branch(branch).report(True) )
+
       return "\n".join(output)
 
   def set_childs ( self ) :
@@ -190,4 +282,12 @@ class repository :
                  c.set_child( child[0] )
             else :
                  c.set_child( sorted([ self.commits[sha] for sha in c.forks ], key=lambda x : x.committer_date)[0].sha )
+
+  def set_branches ( self ) :
+
+      for sha in self.order :
+          commit = self.commits[sha]
+          if not self.branches.has_key( commit.branch ) :
+              self.branches[commit.branch] = branch(commit.branch, self)
+          self.branch(commit.branch).append( commit )
 
