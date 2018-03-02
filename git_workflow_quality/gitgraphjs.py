@@ -4,6 +4,12 @@ import sys
 shown_branches = []
 
 gitgraph_head = """
+<!DOCTYPE html>
+<html>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gitgraph.js/1.11.4/gitgraph.min.js"></script>
+<canvas id="gitGraph"></canvas>
+<script type="text/javascript">
 var myTemplateConfig = {
   colors: [ "#9993FF", "#47E8D4", "#6BDB52", "#F85BB5", "#FFA657", "#F85BB5" ],
   branch: {
@@ -45,8 +51,14 @@ var gitgraph = new GitGraph(config);
 
 """
 
+gitgraph_tail = """
+</script>
+</body>
+</html>
+"""
 
-def graph ( repo , mode='topo' , filename='commits.js' ) :
+
+def graph ( repo , mode='topo' , filename='commits.html' ) :
 
     if not mode in ( 'topo' , 'date' ) :
         print "ERROR : unknown graph type '%s'" % mode
@@ -70,6 +82,7 @@ def graph ( repo , mode='topo' , filename='commits.js' ) :
             commit = origins.pop(0)
             forward_plot(repo, commit, origins, fd)
 
+    fd.write( gitgraph_tail )
     fd.close()
 
 
