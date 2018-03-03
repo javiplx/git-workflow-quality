@@ -49,6 +49,7 @@ workflow we pretend to use
 - <img title="multimerged parent" src="https://github.com/javiplx/git-workflow-quality/raw/master/events/multimerged.png" align="top" height=50 /> source branch merged again in the branch lifetime
 - <img title="indirect merges" src="https://github.com/javiplx/git-workflow-quality/raw/master/events/indirect.png" align="top" height=75 /> branches not merged on direct parents
 - <img title="multiple sources" src="https://github.com/javiplx/git-workflow-quality/raw/master/events/multisource.png" align="top" height=75 /> branches with multiple contributors
+- <img title="merge conflicts" src="https://github.com/javiplx/git-workflow-quality/raw/master/events/mergeconflicts.png" align="top" height=75 /> branches merged with conflicts
 
 # History
 

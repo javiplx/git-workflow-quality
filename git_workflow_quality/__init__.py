@@ -203,6 +203,7 @@ class repository :
       multimerged = 0
       indirect = 0
       multisource = 0
+      mergeconflict = 0
       for branch in self.branches.values() :
           if branch.name in self.primary or branch.name.startswith('release') :
               continue
@@ -210,6 +211,9 @@ class repository :
               for sha in branch.end().forks :
                   if self.branch(self.commits[sha].branch).begin().parent == branch.end().sha :
                       reutilized += 1
+          if branch.end().child and branch.end().parents :
+              if self.commits[branch.end().parents[0]].sha == self.commits[branch.end().child].parent :
+                  mergeconflict += 1
           source = branch.source()
           target = branch.target()
           sources , targets = branch.relations()
@@ -227,6 +231,7 @@ class repository :
       output.append( "  multimerged   %4d" % multimerged )
       output.append( "  indirect      %4d" % indirect )
       output.append( "  multisource   %4d" % multisource )
+      output.append( "  mergeconflict %4d" % mergeconflict )
       output.append( '' )
 
       return "\n".join(output)
