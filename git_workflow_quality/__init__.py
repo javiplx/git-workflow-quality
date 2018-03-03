@@ -299,7 +299,7 @@ class repository :
           branches.append( ( commit.parents[0] , source ) )
           self.commits[commit.parents[0]].set_branch( source )
       else :
-        merged = re.search("Merge branch (?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
+        merged = re.search("Merge (branch )?(?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
         if merged :
           if not commit.parents :
             print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
@@ -310,6 +310,18 @@ class repository :
             target = merged.group('target').strip("'")
             branches.append( ( commit.parent , target ) )
             self.commits[commit.parent].set_branch(target)
+        else :
+            merged = re.search("Merge remote-tracking branch (?P<source>[^ ]*) into (?P<target>[^ ]*)", commit.message)
+            if merged :
+                if not commit.parents :
+                    print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
+                else :
+                    source = merged.group('source').strip("'").replace('origin/', '')
+                    branches.append( ( commit.parents[0] , source ) )
+                    self.commits[commit.parents[0]].set_branch(source)
+                    target = merged.group('target').strip("'")
+                    branches.append( ( commit.parent , target ) )
+                    self.commits[commit.parent].set_branch(target)
 
     for sha,branch in get_branches() :
         branches.append( ( sha , branch ) )
