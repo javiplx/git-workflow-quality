@@ -44,10 +44,11 @@ to another branch appears.
 There are also some events that we can check, that might be symptom of a defect depending on the
 workflow we pretend to use
 
-- branches merged on multiple targets
-- <img title="reutilized branches" src="https://github.com/javiplx/git-workflow-quality/raw/master/events/reutilized.png" align="top" height=50 /> already merged commits used as branch parent
+- <img title="multiple targets" src="https://github.com/javiplx/git-workflow-quality/raw/master/events/multitarget.png" align="top" height=100 /> branches merged on multiple targets
+- <img title="reutilized branches" src="https://github.com/javiplx/git-workflow-quality/raw/master/events/reutilized.png" align="top" height=75 /> already merged commits used as branch parent
 - <img title="multimerged parent" src="https://github.com/javiplx/git-workflow-quality/raw/master/events/multimerged.png" align="top" height=50 /> source branch merged again in the branch lifetime
 - <img title="indirect merges" src="https://github.com/javiplx/git-workflow-quality/raw/master/events/indirect.png" align="top" height=75 /> branches not merged on direct parents
+- <img title="multiple sources" src="https://github.com/javiplx/git-workflow-quality/raw/master/events/multisource.png" align="top" height=75 /> branches with multiple contributors
 
 # History
 

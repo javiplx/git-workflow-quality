@@ -69,14 +69,20 @@ class branch ( list ) :
     def stats ( self ) :
         return len(self), len(self.commits()), len(self.merges())
 
+    def begin ( self ) :
+        return self[0]
+
+    def end ( self ) :
+        return self[-1]
+
     def source ( self ) :
-        source = self[0].parent
+        source = self.begin().parent
         if not source :
             return '<Initial>'
         return self.repo.commits[source].branch
 
     def target ( self ) :
-        target = self[-1].child
+        target = self.end().child
         if not target :
             return '<Final>'
         return self.repo.commits[target].branch
@@ -159,13 +165,80 @@ class repository :
   def branch ( self , branchname ) :
       return self.branches[branchname]
 
+  def events( self ) :
+      output = ['']
+
+      multimerged = {}
+      for commit in self.commits.values() :
+          # Skip if main child is not a merge?
+          # Do we really want to skip for primary branches??
+          if not commit.forks or not commit.child or commit.branch in self.primary :
+              continue
+          merges = []
+          if self.commits[commit.child].parents :
+              if self.commits[commit.child].parent != commit.sha :
+                  if self.commits[commit.child].branch == commit.branch :
+                      # This is an auto-merge and should be detected somewhere
+                      pass
+                  else :
+                      merges.append( commit.child )
+          for sha in [sha for sha in commit.forks if self.commits[sha].parents and self.commits[sha].parent != commit.sha ] :
+                  if self.commits[sha].branch == commit.branch :
+                      # This is an auto-merge and should be detected somewhere
+                      pass
+                  else :
+                      merges.append( sha )
+          if len(merges) > 1 :
+              if not multimerged.has_key(len(merges)) :
+                  multimerged[len(merges)] = []
+              multimerged[len(merges)].append( ( commit.sha , merges ) )
+      if multimerged :
+          output.append( "Commits with multiple merges" )
+          for n in sorted(multimerged.keys()) :
+              output.append( "    %3d commits with %2d merges" % ( len(multimerged[n]) , n ) )
+          output.append( '' )
+
+      multitarget = 0
+      reutilized = 0
+      multimerged = 0
+      indirect = 0
+      multisource = 0
+      for branch in self.branches.values() :
+          if branch.name in self.primary or branch.name.startswith('release') :
+              continue
+          if branch.end().child and branch.end().forks :
+              for sha in branch.end().forks :
+                  if self.branch(self.commits[sha].branch).begin().parent == branch.end().sha :
+                      reutilized += 1
+          source = branch.source()
+          target = branch.target()
+          sources , targets = branch.relations()
+          if targets :
+              multitarget += 1
+          if source in sources :
+              multimerged += 1
+          if source != target :
+              indirect += 1
+          if [ branchname for branchname in sources if branchname != source ] :
+              multisource += 1
+      output.append( "Branch events" )
+      output.append( "  multitarget   %4d" % multitarget )
+      output.append( "  reutilized    %4d" % reutilized )
+      output.append( "  multimerged   %4d" % multimerged )
+      output.append( "  indirect      %4d" % indirect )
+      output.append( "  multisource   %4d" % multisource )
+      output.append( '' )
+
+      return "\n".join(output)
+
   def report( self , details=False) :
       output = ['']
-      output.append( "Number of commits: %s" % len(self.commits) )
-      output.append( "# initial commits: %s" % len([c for c in self.commits.values() if not c.parent ]) )
-      output.append( "Number of merges:  %s" % len([c for c in self.commits.values() if c.parents]) )
-      output.append( "Ammended commits:  %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
-      output.append( "Unlabelled heads:  %s" % len([c for c in self.commits.values() if not c.branch and not c.child]) )
+      output.append( "Number of commits:  %s" % len(self.commits) )
+      output.append( "Number of branches: %s" % ( len(self.branches) - len(self.primary) ) )
+      output.append( "# initial commits:  %s" % len([c for c in self.commits.values() if not c.parent ]) )
+      output.append( "Number of merges:   %s" % len([c for c in self.commits.values() if c.parents]) )
+      output.append( "Ammended commits:   %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
+      output.append( "Unlabelled heads:   %s" % len([c for c in self.commits.values() if not c.branch and not c.child]) )
 
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )

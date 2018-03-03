@@ -16,7 +16,7 @@ var support = gitgraph.branch({name:"branch", column:1, color:"darkblue"});
 master.commit(masterCommit);
 support.commit(supportCommit);
 support.commit(supportCommit);
-var topic = gitgraph.branch({name:"topic", column:1, color:"red"});
+var topic = gitgraph.branch({name:"topic", column:2, color:"red"});
 support.merge(master, {dotColor:"blue", dotStrokeColor:"blue"});
 topic.commit({dotStrokeColor:"red", dotColor:"red"});
 master.commit(masterCommit);
