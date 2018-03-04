@@ -46,6 +46,17 @@ var gitgraph = new GitGraph(config);
 """
 
 
+class unique_list ( list ) :
+
+    def append ( self , item ) :
+        if item not in self :
+            list.append( self , item )
+
+    def remove ( self , item ) :
+        if item in self :
+            list.remove( self , item )
+
+
 def graph ( repo , mode='topo' , filename='commits.js' ) :
 
     if not mode in ( 'topo' , 'date' ) :
@@ -56,7 +67,7 @@ def graph ( repo , mode='topo' , filename='commits.js' ) :
 
     fd.write( gitgraph_head )
 
-    origins = [ c for c in repo.commits.values() if not c.parent ]
+    origins = unique_list([ c for c in repo.commits.values() if not c.parent ])
 
     for origin in origins :
         # FIXME: multiple origins could be owned by the same branch ?
@@ -81,7 +92,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             sha = c.parents[0]
             if current_branch == repo.commits[sha].branch :
                 fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
-                pending.append(repo.commits[c.child])
+                pending.remove(c)
                 for sha in c.forks :
                     target = repo.commits[sha]
                     fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(target.branch) , js_varname(current_branch) , js_branch( target.branch , len(shown_branches) ) ) )
@@ -98,14 +109,17 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                             if p.child :
                                 pending.append(repo.commits[p.child])
                 fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
-                if c in pending :
-                    pending.remove( c )
+                pending.remove( c )
             else :
               if repo.commits[sha].branch not in shown_branches :
                   fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+                  pending.remove(c)
               else :
-                if c not in pending :
-                    pending.append( c )
+                pending.append(c)
+                if c.child :
+                    pending.append( repo.commits[c.child] )
+                for sha in c.forks :
+                    pending.append( repo.commits[sha] )
                 break
         else :
             if first :
@@ -116,13 +130,13 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( js_varname(current_branch) , c.sha , c.message ) )
             elif c.child and repo.commits[c.child].parents :
                 fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( js_varname(current_branch) , c.sha , c.message ) )
+            pending.remove(c)
         for sha in c.forks :
             if not repo.commits[sha].parents :
                 first = True
                 fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(current_branch) , js_branch( repo.commits[sha].branch , len(shown_branches) ) ) )
                 shown_branches.append( repo.commits[sha].branch )
-                if repo.commits[sha] not in pending :
-                    pending.append( repo.commits[sha] )
+                pending.append( repo.commits[sha] )
             else :
               target = repo.commits[sha]
               if target not in pending :
@@ -141,13 +155,11 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
         if c.parents :
             sha = c.parents[0]
             fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
-            if c in pending :
-                pending.remove( c )
+            pending.remove( c )
         else :
             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( js_varname(current_branch) , c.sha , c.message ) )
         for sha in c.forks :
-            if repo.commits[sha] not in pending :
-                pending.append( repo.commits[sha] )
+            pending.append( repo.commits[sha] )
 
 def chrono_plot ( repo , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
