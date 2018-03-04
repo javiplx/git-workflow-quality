@@ -100,7 +100,6 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                             pending.remove(p)
                             if p.child :
                                 pending.append(repo.commits[p.child])
-                            pending.remove( c )
                 fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
                 if c in pending :
                     pending.remove( c )
@@ -138,13 +137,15 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(c.branch) , js_varname(target.branch) , sha , target.message ) )
                 fd.write( '%s.checkout();\n' % js_varname(c.branch) )
                 pending.remove( target )
-                pending.append( repo.commits[target.child] )
+                if target.child :
+                    pending.append( repo.commits[target.child] )
         if new_branches :
             first = True
             fd.write( '%s.checkout();\n' % js_varname(c.branch) )
         c = repo.commits[c.child]
     else :
-        shown_branches.remove( current_branch )
+        if current_branch in shown_branches :
+            shown_branches.remove( current_branch )
         if c.parents :
             sha = c.parents[0]
             fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
