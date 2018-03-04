@@ -159,7 +159,7 @@ def chrono_plot ( repo , fd=sys.stdout) :
             shown_branches.append( c.branch )
             fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(c.branch) , js_varname(repo.commits[c.parent].branch) , js_branch( c.branch , len(shown_branches) ) ) )
         if not c.parents :
-            if first or c.forks :
+            if first or c.forks or not c.child :
                 first = False
                 fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( js_varname(c.branch) , c.sha , c.message ) )
             elif c.child and repo.commits[c.child].parents :
