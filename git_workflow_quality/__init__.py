@@ -221,7 +221,7 @@ class repository :
               multitarget += 1
           if source in sources :
               multimerged += 1
-          if source != target :
+          if source != target and branch.end().child :
               indirect += 1
           if [ branchname for branchname in sources if branchname != source ] :
               multisource += 1
