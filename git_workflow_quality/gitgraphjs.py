@@ -80,7 +80,16 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     while c.child :
         if c.parents :
             sha = c.parents[0]
-            if c.forks :
+            if current_branch == repo.commits[sha].branch :
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+                pending.append(repo.commits[c.child])
+                for sha in c.forks :
+                    target = repo.commits[sha]
+                    fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(target.branch) , js_branch( target.branch , len(shown_branches) ) ) )
+                    shown_branches.append( target.branch )
+                    pending.append( target )
+                break
+            elif c.forks :
                 first = True
                 for sha in c.forks :
                     for p in pending :
