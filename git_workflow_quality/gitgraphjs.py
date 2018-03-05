@@ -1,7 +1,22 @@
 
 import sys
 
-shown_branches = []
+
+class nullable_list ( list ) :
+
+    def append ( self , item ) :
+        if None in self :
+            idx = self.index(None)
+            self[idx] = item
+        else :
+            list.append( self , item )
+
+    def remove ( self , item ) :
+        idx = self.index(item)
+        self[idx] = None
+
+shown_branches = nullable_list()
+
 
 gitgraph_head = """
 <!DOCTYPE html>
@@ -58,6 +73,17 @@ gitgraph_tail = """
 """
 
 
+class unique_list ( list ) :
+
+    def append ( self , item ) :
+        if item not in self :
+            list.append( self , item )
+
+    def remove ( self , item ) :
+        if item in self :
+            list.remove( self , item )
+
+
 def graph ( repo , mode='topo' , filename='commits.html' ) :
 
     if not mode in ( 'topo' , 'date' ) :
@@ -68,7 +94,7 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
 
     fd.write( gitgraph_head )
 
-    origins = [ c for c in repo.commits.values() if not c.parent ]
+    origins = unique_list([ c for c in repo.commits.values() if not c.parent ])
 
     for origin in origins :
         # FIXME: multiple origins could be owned by the same branch ?
@@ -88,78 +114,112 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
 
 def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     first = True
-    fd.write( '%s.checkout();\n' % js_varname(c.branch) )
     current_branch = c.branch
     while c.child :
         if c.parents :
             sha = c.parents[0]
             if current_branch == repo.commits[sha].branch :
+                c.render( fd , repo.commits[sha] )
+                pending.remove(c)
+                for sha in c.forks :
+                    target = repo.commits[sha]
+                    fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(target.branch) , js_varname(current_branch) , js_branch( target.branch , len(shown_branches) ) ) )
+                    shown_branches.append( target.branch )
+                    pending.append( target )
+                break
+            elif c.forks :
                 first = True
-                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+                for sha in c.forks :
+                    for p in pending :
+                        if p.sha in c.parents :
+                            fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( js_varname(current_branch) , p.sha , p.message ) )
+                            pending.remove(p)
+                            if p.child :
+                                pending.append(repo.commits[p.child])
+                c.render( fd , repo.commits[sha] )
                 pending.remove( c )
             else :
-                if c not in pending :
-                    pending.append( c )
+              if repo.commits[sha].branch not in shown_branches :
+                  c.render( fd , repo.commits[sha] )
+                  shown_branches.remove( current_branch )
+                  pending.remove(c)
+              else :
+                pending.append(c)
+                if c.child :
+                    pending.append( repo.commits[c.child] )
+                for sha in c.forks :
+                    pending.append( repo.commits[sha] )
                 break
         else :
             if first :
                 first = False
-                fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
+                c.render(fd)
             elif c.forks :
                 first = True
-                fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
+                c.render(fd)
             elif c.child and repo.commits[c.child].parents :
-                fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
-        new_branches = False
+                c.render(fd)
+            pending.remove(c)
         for sha in c.forks :
-            first = True
-            if not repo.commits[sha].branch in shown_branches :
-                new_branches = True
-                fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(repo.commits[sha].branch) , js_branch( repo.commits[sha].branch , len(shown_branches) ) ) )
+            if not repo.commits[sha].parents :
+                first = True
+                fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(current_branch) , js_branch( repo.commits[sha].branch , len(shown_branches) ) ) )
                 shown_branches.append( repo.commits[sha].branch )
-            if repo.commits[sha] not in pending :
                 pending.append( repo.commits[sha] )
-        if new_branches :
-            first = True
-            fd.write( '%s.checkout();\n' % js_varname(c.branch) )
+            else :
+              target = repo.commits[sha]
+              if target not in pending :
+                    for p in pending :
+                        if p.sha == target.parent :
+                            break
+              else :
+                target.render( fd , c )
+                pending.remove( target )
+                if target.child :
+                    pending.append( repo.commits[target.child] )
         c = repo.commits[c.child]
+        # This is likey caused by some bug on branch to commit assignment
+        if c.branch != current_branch and not c.parents :
+            pending.append(c)
+            break
     else :
+        shown_branches.remove( current_branch )
         if c.parents :
             sha = c.parents[0]
-            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(c.branch) , c.sha , c.message ) )
+            c.render( fd , repo.commits[sha] )
+            pending.remove( c )
         else :
-            fd.write( 'gitgraph.commit({sha1:"%s", message:"%s"});\n' % ( c.sha , c.message ) )
+            c.render(fd)
         for sha in c.forks :
-            if repo.commits[sha] not in pending :
-                pending.append( repo.commits[sha] )
+            if repo.commits[sha].branch not in shown_branches :
+                shown_branches.append( repo.commits[sha].branch )
+            pending.append( repo.commits[sha] )
 
 def chrono_plot ( repo , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
-    current_branch = None
     first = True
     for sha in repo.order :
         c = repo.commits[sha]
         if not c.branch in shown_branches :
+            first = True
             shown_branches.append( c.branch )
-            if c.parent and repo.commits[c.parent].branch != current_branch :
-                fd.write( '%s.checkout();\n' % js_varname(repo.commits[c.parent].branch) )
-            fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(c.branch) , js_branch( c.branch , len(shown_branches) ) ) )
-            first = True
-        elif current_branch != c.branch :
-            fd.write( '%s.checkout();\n' % js_varname(c.branch) )
-            first = True
-        current_branch = c.branch
+            fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(c.branch) , js_varname(repo.commits[c.parent].branch) , js_branch( c.branch , len(shown_branches) ) ) )
         if not c.parents :
-            if first or c.forks :
+            if first or c.forks or not c.child :
                 first = False
-                fd.write( 'gitgraph.commit({sha1: "%s", message: "%s"});\n' % ( c.sha , c.message ) )
+                c.render(fd)
             elif c.child and repo.commits[c.child].parents :
-                fd.write( 'gitgraph.commit({sha1: "%s", message: "%s"});\n' % ( c.sha , c.message ) )
+                first = True
+                c.render(fd)
         else :
-            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( js_varname(repo.commits[c.parents[0]].branch) , js_varname(c.branch) , c.sha , c.message ) )
+            first = True
+            c.render(fd, repo.commits[c.parents[0]])
             if not repo.commits[c.parents[0]].child :
                 if repo.commits[c.parents[0]].branch in shown_branches :
                     shown_branches.remove( repo.commits[c.parents[0]].branch )
+        if c.child and c.branch != repo.commits[c.child].branch :
+            shown_branches.remove(c.branch)
+
 
 def js_varname ( var ) :
     return "branch_" + var.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
