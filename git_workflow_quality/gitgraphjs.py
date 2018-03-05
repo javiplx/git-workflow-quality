@@ -149,6 +149,10 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 if target.child :
                     pending.append( repo.commits[target.child] )
         c = repo.commits[c.child]
+        # This is likey caused by some bug on branch to commit assignment
+        if c.branch != current_branch and not c.parents :
+            pending.append(c)
+            break
     else :
         if current_branch in shown_branches :
             shown_branches.remove( current_branch )
