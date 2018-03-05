@@ -1,7 +1,22 @@
 
 import sys
 
-shown_branches = []
+
+class nullable_list ( list ) :
+
+    def append ( self , item ) :
+        if None in self :
+            idx = self.index(None)
+            self[idx] = item
+        else :
+            list.append( self , item )
+
+    def remove ( self , item ) :
+        idx = self.index(item)
+        self[idx] = None
+
+shown_branches = nullable_list()
+
 
 gitgraph_head = """
 var myTemplateConfig = {
