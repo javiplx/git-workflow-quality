@@ -113,6 +113,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             else :
               if repo.commits[sha].branch not in shown_branches :
                   c.render( fd , repo.commits[sha] )
+                  shown_branches.remove( current_branch )
                   pending.remove(c)
               else :
                 pending.append(c)
@@ -154,8 +155,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             pending.append(c)
             break
     else :
-        if current_branch in shown_branches :
-            shown_branches.remove( current_branch )
+        shown_branches.remove( current_branch )
         if c.parents :
             sha = c.parents[0]
             c.render( fd , repo.commits[sha] )
@@ -187,6 +187,9 @@ def chrono_plot ( repo , fd=sys.stdout) :
             if not repo.commits[c.parents[0]].child :
                 if repo.commits[c.parents[0]].branch in shown_branches :
                     shown_branches.remove( repo.commits[c.parents[0]].branch )
+        if c.child and c.branch != repo.commits[c.child].branch :
+            shown_branches.remove(c.branch)
+
 
 def js_varname ( var ) :
     return "branch_" + var.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
