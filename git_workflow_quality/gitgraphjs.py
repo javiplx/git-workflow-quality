@@ -178,6 +178,8 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
         else :
             c.render(fd)
         for sha in c.forks :
+            if repo.commits[sha].branch not in shown_branches :
+                shown_branches.append( repo.commits[sha].branch )
             pending.append( repo.commits[sha] )
 
 def chrono_plot ( repo , fd=sys.stdout) :
