@@ -45,6 +45,12 @@ class commit :
         self.child = sha
         self.forks.remove(sha)
 
+    def render ( self , fd , merged_commit=None ) :
+        if self.parents :
+            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( gitgraphjs.js_varname(merged_commit.branch) , gitgraphjs.js_varname(self.branch) , self.sha , self.message ) )
+        else :
+            fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( gitgraphjs.js_varname(self.branch) , self.sha , self.message ) )
+
     def __str__ ( self ) :
         parents = " ".join(self.parents)
         forks = " ".join(self.forks)
