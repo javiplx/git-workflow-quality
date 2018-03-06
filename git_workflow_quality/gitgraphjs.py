@@ -160,7 +160,10 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             elif c.child and repo.commits[c.child].parents :
                 c.render(fd)
             pending.remove(c)
+        end_of_branch = repo.commits[c.child].branch != current_branch
         for sha in c.forks :
+            if repo.commits[sha].branch == current_branch :
+                end_of_branch = False
             if not repo.commits[sha].parents :
                 first = True
                 fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(current_branch) , js_branch( repo.commits[sha].branch , len(shown_branches) ) ) )
@@ -177,6 +180,8 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 pending.remove( target )
                 if target.child :
                     pending.append( repo.commits[target.child] )
+        if end_of_branch :
+            shown_branches.remove( current_branch )
         c = repo.commits[c.child]
         # This is likey caused by some bug on branch to commit assignment
         if c.branch != current_branch and not c.parents :
