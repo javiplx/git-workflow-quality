@@ -141,7 +141,6 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             else :
               if repo.commits[sha].branch not in shown_branches :
                   c.render( fd , repo.commits[sha] )
-                  shown_branches.remove( current_branch )
                   pending.remove(c)
               else :
                 pending.append(c)
