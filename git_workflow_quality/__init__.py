@@ -6,8 +6,6 @@ import re
 import os
 
 
-primary = ('master', 'develop')
-
 class commit :
 
     def __init__ ( self , sha , author , committer , message ) :
@@ -34,7 +32,11 @@ class commit :
     def set_branch ( self , branch ) :
         if self.branch :
             if self.branch in repository.primary :
-                return
+                if branch not in repository.primary :
+                    return
+                # self.branch has a higher weight respect to branch
+                if repository.primary.index(self.branch) < repository.primary.index(branch) :
+                    return
             if not branch in repository.primary and branch != self.branch :
                 raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
         self.branch = branch
