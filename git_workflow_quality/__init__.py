@@ -168,8 +168,6 @@ class repository :
 
     self.set_childs()
 
-    self.set_branches()
-
   def branch ( self , branchname ) :
       return self.branches[branchname]
 
@@ -310,6 +308,9 @@ class repository :
         else :
           source = merged.group('source').strip("'")
           branches.append( ( commit.parents[0] , source ) )
+          if not self.branches.has_key( source ) :
+              self.branches[source] = branch(source, self)
+          self.branch(source).append( commit )
           self.commits[commit.parents[0]].set_branch( source )
       else :
         merged = re.search("Merge (branch )?(?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
@@ -319,9 +320,15 @@ class repository :
           else :
             source = merged.group('source').strip("'")
             branches.append( ( commit.parents[0] , source ) )
+            if not self.branches.has_key( source ) :
+                self.branches[source] = branch(source, self)
+            self.branch(source).append( commit )
             self.commits[commit.parents[0]].set_branch(source)
             target = merged.group('target').strip("'")
             branches.append( ( commit.parent , target ) )
+            if not self.branches.has_key( target ) :
+                self.branches[target] = branch(target, self)
+            self.branch(target).append( commit )
             self.commits[commit.parent].set_branch(target)
         else :
             merged = re.search("Merge remote-tracking branch (?P<source>[^ ]*) into (?P<target>[^ ]*)", commit.message)
@@ -331,14 +338,23 @@ class repository :
                 else :
                     source = merged.group('source').strip("'").replace('origin/', '')
                     branches.append( ( commit.parents[0] , source ) )
+                    if not self.branches.has_key( source ) :
+                        self.branches[source] = branch(source, self)
+                    self.branch(source).append( commit )
                     self.commits[commit.parents[0]].set_branch(source)
                     target = merged.group('target').strip("'")
                     branches.append( ( commit.parent , target ) )
+                    if not self.branches.has_key( target ) :
+                        self.branches[target] = branch(target, self)
+                    self.branch(target).append( commit )
                     self.commits[commit.parent].set_branch(target)
 
-    for sha,branch in get_branches() :
-        branches.append( ( sha , branch ) )
-        self.commits[sha].set_branch( branch )
+    for sha,branchname in get_branches() :
+        branches.append( ( sha , branchname ) )
+        if not self.branches.has_key( branchname ) :
+            self.branches[branchname] = branch(branchname, self)
+        self.branch(branchname).append( commit )
+        self.commits[sha].set_branch( branchname )
 
     n = 0
     for commit in self.commits.values() :
@@ -348,21 +364,26 @@ class repository :
                 n += 1
                 newbranch = "branch_%s" % n
                 branches.append( ( c.sha , newbranch ) )
+                if not self.branches.has_key( newbranch ) :
+                    self.branches[newbranch] = branch(newbranch, self)
+                self.branch(newbranch).append( c )
                 c.set_branch( newbranch )
     if n : print "WARNING : %d removed branch not automatically detected" % n
 
     # All branches detected at this point
 
-    for sha,branch in branches :
+    for sha,branchname in branches :
         commit = self.commits[sha]
         c = self.commits[commit.parent]
         while c :
             if not c.parent : # Initial commit detection
-                c.set_branch( branch )
+                self.branch(c.branch).append( c )
+                c.set_branch( branchname )
                 break
-            if c.branch and not branch in repository.primary :
+            if c.branch and not branchname in repository.primary :
                 break
-            c.set_branch(branch)
+            self.branch(c.branch).append( c )
+            c.set_branch(branchname)
             c = self.commits[c.parent]
 
     for c in self.commits.values() :
@@ -380,12 +401,4 @@ class repository :
                  c.set_child( child[0] )
             else :
                  c.set_child( sorted([ self.commits[sha] for sha in c.forks ], key=lambda x : x.committer_date)[0].sha )
-
-  def set_branches ( self ) :
-
-      for sha in self.order :
-          commit = self.commits[sha]
-          if not self.branches.has_key( commit.branch ) :
-              self.branches[commit.branch] = branch(commit.branch, self)
-          self.branch(commit.branch).append( commit )
 
