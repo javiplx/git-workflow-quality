@@ -30,15 +30,11 @@ class commit :
         self.forks = []
 
     def set_branch ( self , branch ) :
-        if self.branch :
-            if self.branch.is_primary() :
-                if not branch.is_primary() :
-                    return
-                # self.branch has a higher weight respect to branch
-                if branch.primary.index(self.branch.name) < branch.primary.index(branch.name) :
-                    return
-            if not branch.is_primary() and branch != self.branch :
-                raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
+        if branch < self.branch :
+            # self.branch has a higher weight respect to branch
+            return
+        if self.branch and not branch.is_primary() and branch != self.branch :
+            raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
         branch.append( self )
 
     def set_child ( self , sha ) :
@@ -102,6 +98,15 @@ class Branch ( list ) :
 
     def is_release ( self ) :
         return self.name.startswith('release')
+
+    def __lt__ ( self , other ) :
+        if not other :
+            return False
+        if self.is_primary() and other.is_primary() :
+            return Branch.primary.index(self.name) < Branch.primary.index(other.name)
+        if other.is_primary() :
+            return True
+        return False
 
     def append ( self , commit ) :
         list.append( self , commit )
