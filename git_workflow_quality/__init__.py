@@ -33,7 +33,7 @@ class commit :
         if branch < self.branch :
             # self.branch has a higher weight respect to branch
             return
-        if self.branch and not branch.is_primary() and branch != self.branch :
+        if self.branch and not branch.is_primary() :
             raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
         branch.append( self )
 
@@ -105,6 +105,8 @@ class Branch ( list ) :
     def __lt__ ( self , other ) :
         if not other :
             return False
+        if self == other :
+            return True
         if self.is_primary() and other.is_primary() :
             return Branch.primary.index(self.name) < Branch.primary.index(other.name)
         if other.is_primary() :
@@ -112,6 +114,8 @@ class Branch ( list ) :
         return False
 
     def append ( self , commit ) :
+        if commit.branch :
+            commit.branch.remove( commit )
         list.append( self , commit )
         commit.branch = self
 
