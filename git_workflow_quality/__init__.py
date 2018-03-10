@@ -338,6 +338,25 @@ class repository :
 
       return "\n".join(output)
 
+  def purge ( self ) :
+      for c in self.commits.values() :
+          if not c.branch :
+              sha = c.parent
+              if self.commits.has_key(sha) :
+                  parent = self.commits[sha]
+                  if parent.child == c.sha :
+                      parent.child = None
+                  else :
+                      parent.forks.remove(c.sha)
+              for sha in c.parents :
+                  parent = self.commits[sha]
+                  if parent.child == c.sha :
+                      parent.child = None
+                  else :
+                      parent.forks.remove(c.sha)
+              self.commits.pop(c.sha)
+              self.order.remove(c.sha)
+
   def set_childs ( self ) :
 
     branches = []
