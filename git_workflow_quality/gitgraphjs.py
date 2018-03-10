@@ -99,7 +99,7 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
     for origin in origins :
         # FIXME: multiple origins could be owned by the same branch ?
         shown_branches.append( origin.branch )
-        fd.write( 'var %s = gitgraph.branch({%s});\n' % ( origin.branch.as_var() , origin.branch.as_var() ) )
+        origin.branch.render( fd )
 
     if mode == 'date' :
         chrono_plot(repo, fd)
