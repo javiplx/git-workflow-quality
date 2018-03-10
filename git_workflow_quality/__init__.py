@@ -19,7 +19,7 @@ class commit :
         self.committer_date = line[1]
         self.parent = None
         self.parents = ()
-        self.branch = ''
+        self.branch = None
         if len(line) > 2 :
             self.parent = line[2]
             if len(line) > 3 :
@@ -57,8 +57,8 @@ class commit :
         parents = " ".join(self.parents)
         forks = " ".join(self.forks)
         if self.parent :
-            return "%-20s %s : %s/%s %s | %s :: %s" % ( self.branch[:20] , self.sha , self.parent , self.child , parents , forks , self.message )
-        return "%-20s %s : %40s/%s %s | %s :: %s" % ( self.branch[:20] , self.sha , '<None>' , self.child , parents , forks , self.message )
+            return "%-20s %s : %s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , self.parent , self.child , parents , forks , self.message )
+        return "%-20s %s : %40s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , '<None>' , self.child , parents , forks , self.message )
 
 
 class branch ( list ) :
@@ -213,7 +213,7 @@ class repository :
       multisource = 0
       mergeconflict = 0
       for branch in self.branches.values() :
-          if branch.name in self.primary or branch.name.startswith('release') :
+          if branch.name in self.primary or str(branch.name).startswith('release') :
               continue
           if branch.end().child and branch.end().forks :
               for sha in branch.end().forks :
@@ -260,7 +260,7 @@ class repository :
           if self.branches.has_key(branch) :
               output.append( report_fmt % self.branch(branch).report(True) )
 
-      releases = [ b for b in self.branches if b not in repository.primary and b.startswith('release') ]
+      releases = [ b for b in self.branches if b not in repository.primary and str(b).startswith('release') ]
       if releases :
           output.append( "" )
           output.append( "%-10s %8s   %7s    (%d branches)" % ( 'RELEASE' , '#commits' , '#merges' , len(releases) ) )
@@ -280,7 +280,7 @@ class repository :
                   if [c for c in commits if not c.parents] :
                       output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
 
-      branches = [ b for b in self.branches if b not in repository.primary and not b.startswith('release') ]
+      branches = [ b for b in self.branches if b not in repository.primary and not str(b).startswith('release') ]
       if branches :
           output.append( "" )
           output.append( "%-10s %8s   %7s   (%d branches)" % ( 'TOPIC' , '#commits' , '#merges' , len(branches) ) )
