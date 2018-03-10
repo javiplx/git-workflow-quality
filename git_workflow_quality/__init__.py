@@ -45,9 +45,9 @@ class commit :
 
     def render ( self , fd , merged_commit=None ) :
         if self.parents :
-            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( gitgraphjs.js_varname(merged_commit.branch) , gitgraphjs.js_varname(self.branch) , self.sha , self.message ) )
+            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( merged_commit.branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
         else :
-            fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( gitgraphjs.js_varname(self.branch) , self.sha , self.message ) )
+            fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( self.branch.as_var() , self.sha , self.message ) )
 
     def __cmp__ ( self , other ) :
         return self.committer_date.__cmp__( other.committer_date )
@@ -138,6 +138,19 @@ class Branch ( list ) :
             sources = self.relations()[0]
             output.extend( ( self.source() , len(sources) , self.target() ) )
         return tuple(output)
+
+    def as_var ( self ) :
+        return "branch_" + self.name.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
+
+    def as_json ( self , count=2 ) :
+        json = 'name:"%s"' % self.name
+        if self.name == 'master' :
+            json += ", column:0"
+        elif self.name == 'develop' :
+            json += ", column:1"
+        else :
+            json += ", column:%d" % count
+        return json
 
 
 def get_branches () :
