@@ -225,7 +225,8 @@ def chrono_plot ( repo , fd=sys.stdout) :
             shown_branches.remove(c.branch)
 
 
-def js_varname ( var ) :
+def js_varname ( branch ) :
+    var = branch.name
     return "branch_" + var.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
 
 def js_branch ( name , count=2 ) :

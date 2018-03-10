@@ -31,15 +31,15 @@ class commit :
 
     def set_branch ( self , branch ) :
         if self.branch :
-            if self.branch in repository.primary :
-                if branch not in repository.primary :
+            if self.branch.is_primary() :
+                if not branch.is_primary() :
                     return
                 # self.branch has a higher weight respect to branch
-                if repository.primary.index(self.branch) < repository.primary.index(branch) :
+                if branch.primary.index(self.branch.name) < branch.primary.index(branch.name) :
                     return
-            if not branch in repository.primary and branch != self.branch :
+            if not branch.is_primary() and branch != self.branch :
                 raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
-        self.branch = branch
+        branch.append( self )
 
     def set_child ( self , sha ) :
         if self.child :
@@ -62,6 +62,8 @@ class commit :
 
 
 class Branch ( list ) :
+
+    primary = ('master', 'develop')
 
     def __init__ ( self , branchname , repo ) :
         self.name = branchname
@@ -87,13 +89,23 @@ class Branch ( list ) :
         source = self.begin().parent
         if not source :
             return '<Initial>'
-        return self.repo.commits[source].branch
+        return self.repo.commits[source].branch.name
 
     def target ( self ) :
         target = self.end().child
         if not target :
             return '<Final>'
-        return self.repo.commits[target].branch
+        return self.repo.commits[target].branch.name
+
+    def is_primary ( self ) :
+        return self.name in Branch.primary
+
+    def append ( self , commit ) :
+        list.append( self , commit )
+        commit.branch = self
+
+    def __str__ ( self ) :
+        return self.name
 
     def relations ( self ) :
         sources = []
@@ -141,8 +153,6 @@ def get_branches () :
 
 class repository :
 
-  primary = ('master', 'develop')
-
   def __init__ ( self ) :
 
     self.commits = {}
@@ -180,7 +190,7 @@ class repository :
       for commit in self.commits.values() :
           # Skip if main child is not a merge?
           # Do we really want to skip for primary branches??
-          if not commit.forks or not commit.child or commit.branch in self.primary :
+          if not commit.forks or not commit.child or commit.branch.is_primary() :
               continue
           merges = []
           if self.commits[commit.child].parents :
@@ -213,11 +223,11 @@ class repository :
       multisource = 0
       mergeconflict = 0
       for branch in self.branches.values() :
-          if branch.name in self.primary or branch.name.startswith('release') :
+          if branch.is_primary() or branch.name.startswith('release') :
               continue
           if branch.end().child and branch.end().forks :
               for sha in branch.end().forks :
-                  if self.branch(self.commits[sha].branch).begin().parent == branch.end().sha :
+                  if self.commits[sha].branch.begin().parent == branch.end().sha :
                       reutilized += 1
           if branch.end().child and branch.end().parents :
               if self.commits[branch.end().parents[0]].sha == self.commits[branch.end().child].parent :
@@ -247,7 +257,7 @@ class repository :
   def report( self , details=False) :
       output = ['']
       output.append( "Number of commits:  %s" % len(self.commits) )
-      output.append( "Number of branches: %s" % ( len(self.branches) - len(self.primary) ) )
+      output.append( "Number of branches: %s" % ( len(self.branches) - len(Branch.primary) ) )
       output.append( "# initial commits:  %s" % len([c for c in self.commits.values() if not c.parent ]) )
       output.append( "Number of merges:   %s" % len([c for c in self.commits.values() if c.parents]) )
       output.append( "Ammended commits:   %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
@@ -256,17 +266,16 @@ class repository :
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
       output.append( "%-25s %8s   %7s" % ( 'PRIMARY' , '#commits' , '#merges' ) )
-      for branch in repository.primary :
-          if self.branches.has_key(branch) :
-              output.append( report_fmt % self.branch(branch).report(True) )
+      for branch in [ b for b in self.branches.values() if b.is_primary() ] :
+          output.append( report_fmt % branch.report(True) )
 
-      releases = [ b for b in self.branches if b not in repository.primary and b.startswith('release') ]
+      releases = [ b for b in self.branches.values() if not b.is_primary() and b.name.startswith('release') ]
       if releases :
           output.append( "" )
           output.append( "%-10s %8s   %7s    (%d branches)" % ( 'RELEASE' , '#commits' , '#merges' , len(releases) ) )
           stats = []
           for release in releases :
-              stats.append ( self.branch(release).stats() )
+              stats.append( release.stats() )
           output.append( "           %8d   %7d" % ( sum([stat[1] for stat in stats]) , sum([stat[2] for stat in stats]) ) )
           L = sum( [ stat[1] for stat in stats ] )
           N = sum( [ 100*stat[1]/stat[0] for stat in stats ] )
@@ -275,18 +284,18 @@ class repository :
           if details :
               output.append( "     -----" )
               for release in releases :
-                  output.append( report_fmt % self.branch(release).report(True) )
+                  output.append( report_fmt % release.report(True) )
                   commits = self.branch(release)
                   if [c for c in commits if not c.parents] :
                       output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
 
-      branches = [ b for b in self.branches if b not in repository.primary and not b.startswith('release') ]
+      branches = [ b for b in self.branches.values() if not b.is_primary() and not b.name.startswith('release') ]
       if branches :
           output.append( "" )
           output.append( "%-10s %8s   %7s   (%d branches)" % ( 'TOPIC' , '#commits' , '#merges' , len(branches) ) )
           stats = []
           for branch in branches :
-              stats.append ( self.branch(branch).stats() )
+              stats.append ( branch.stats() )
           output.append( "           %8d   %7d" % ( sum([stat[1] for stat in stats]) , sum([stat[2] for stat in stats]) ) )
           L = sum( [ stat[1] for stat in stats ] )
           N = sum( [ 100.0*stat[1]/stat[0] for stat in stats ] )
@@ -295,7 +304,7 @@ class repository :
           if details :
               output.append( "     -----" )
               for branch in branches :
-                  output.append( report_fmt % self.branch(branch).report(True) )
+                  output.append( report_fmt % branch.report(True) )
 
       return "\n".join(output)
 
@@ -310,7 +319,6 @@ class repository :
         else :
           source = merged.group('source').strip("'")
           branches.append( ( commit.parents[0] , source ) )
-          self.branch(source).append( commit )
           self.commits[commit.parents[0]].set_branch( self.branch(source) )
       else :
         merged = re.search("Merge (branch )?(?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
@@ -320,11 +328,9 @@ class repository :
           else :
             source = merged.group('source').strip("'")
             branches.append( ( commit.parents[0] , source ) )
-            self.branch(source).append( commit )
             self.commits[commit.parents[0]].set_branch(self.branch(source))
             target = merged.group('target').strip("'")
             branches.append( ( commit.parent , target ) )
-            self.branch(target).append( commit )
             self.commits[commit.parent].set_branch(self.branch(target))
         else :
             merged = re.search("Merge remote-tracking branch (?P<source>[^ ]*) into (?P<target>[^ ]*)", commit.message)
@@ -334,16 +340,13 @@ class repository :
                 else :
                     source = merged.group('source').strip("'").replace('origin/', '')
                     branches.append( ( commit.parents[0] , source ) )
-                    self.branch(source).append( commit )
                     self.commits[commit.parents[0]].set_branch(self.branch(source))
                     target = merged.group('target').strip("'")
                     branches.append( ( commit.parent , target ) )
-                    self.branch(target).append( commit )
                     self.commits[commit.parent].set_branch(self.branch(target))
 
     for sha,branchname in get_branches() :
         branches.append( ( sha , branchname ) )
-        self.branch(branchname).append( commit )
         self.commits[sha].set_branch( self.branch(branchname) )
 
     n = 0
@@ -354,7 +357,6 @@ class repository :
                 n += 1
                 newbranch = "branch_%s" % n
                 branches.append( ( c.sha , newbranch ) )
-                self.branch(newbranch).append( c )
                 c.set_branch( self.branch(newbranch) )
     if n : print "WARNING : %d removed branch not automatically detected" % n
 
@@ -362,16 +364,15 @@ class repository :
 
     for sha,branchname in branches :
         commit = self.commits[sha]
+        branch = self.branch(branchname)
         c = self.commits[commit.parent]
         while c :
             if not c.parent : # Initial commit detection
-                self.branch(c.branch).append( c )
-                c.set_branch( branchname )
+                c.set_branch( branch )
                 break
-            if c.branch and not branchname in repository.primary :
+            if c.branch and not branch.is_primary() :
                 break
-            self.branch(c.branch).append( c )
-            c.set_branch(branchname)
+            c.set_branch(branch)
             c = self.commits[c.parent]
 
     for c in self.commits.values() :
