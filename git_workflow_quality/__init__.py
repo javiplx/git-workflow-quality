@@ -61,7 +61,7 @@ class commit :
         return "%-20s %s : %40s/%s %s | %s :: %s" % ( self.branch[:20] , self.sha , '<None>' , self.child , parents , forks , self.message )
 
 
-class branch ( list ) :
+class Branch ( list ) :
 
     def __init__ ( self , branchname , repo ) :
         self.name = branchname
@@ -169,6 +169,8 @@ class repository :
     self.set_childs()
 
   def branch ( self , branchname ) :
+      if not self.branches.has_key( branchname ) :
+          self.branches[branchname] = Branch(branchname, self)
       return self.branches[branchname]
 
   def events( self ) :
@@ -308,10 +310,8 @@ class repository :
         else :
           source = merged.group('source').strip("'")
           branches.append( ( commit.parents[0] , source ) )
-          if not self.branches.has_key( source ) :
-              self.branches[source] = branch(source, self)
           self.branch(source).append( commit )
-          self.commits[commit.parents[0]].set_branch( source )
+          self.commits[commit.parents[0]].set_branch( self.branch(source) )
       else :
         merged = re.search("Merge (branch )?(?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
         if merged :
@@ -320,16 +320,12 @@ class repository :
           else :
             source = merged.group('source').strip("'")
             branches.append( ( commit.parents[0] , source ) )
-            if not self.branches.has_key( source ) :
-                self.branches[source] = branch(source, self)
             self.branch(source).append( commit )
-            self.commits[commit.parents[0]].set_branch(source)
+            self.commits[commit.parents[0]].set_branch(self.branch(source))
             target = merged.group('target').strip("'")
             branches.append( ( commit.parent , target ) )
-            if not self.branches.has_key( target ) :
-                self.branches[target] = branch(target, self)
             self.branch(target).append( commit )
-            self.commits[commit.parent].set_branch(target)
+            self.commits[commit.parent].set_branch(self.branch(target))
         else :
             merged = re.search("Merge remote-tracking branch (?P<source>[^ ]*) into (?P<target>[^ ]*)", commit.message)
             if merged :
@@ -338,23 +334,17 @@ class repository :
                 else :
                     source = merged.group('source').strip("'").replace('origin/', '')
                     branches.append( ( commit.parents[0] , source ) )
-                    if not self.branches.has_key( source ) :
-                        self.branches[source] = branch(source, self)
                     self.branch(source).append( commit )
-                    self.commits[commit.parents[0]].set_branch(source)
+                    self.commits[commit.parents[0]].set_branch(self.branch(source))
                     target = merged.group('target').strip("'")
                     branches.append( ( commit.parent , target ) )
-                    if not self.branches.has_key( target ) :
-                        self.branches[target] = branch(target, self)
                     self.branch(target).append( commit )
-                    self.commits[commit.parent].set_branch(target)
+                    self.commits[commit.parent].set_branch(self.branch(target))
 
     for sha,branchname in get_branches() :
         branches.append( ( sha , branchname ) )
-        if not self.branches.has_key( branchname ) :
-            self.branches[branchname] = branch(branchname, self)
         self.branch(branchname).append( commit )
-        self.commits[sha].set_branch( branchname )
+        self.commits[sha].set_branch( self.branch(branchname) )
 
     n = 0
     for commit in self.commits.values() :
@@ -364,10 +354,8 @@ class repository :
                 n += 1
                 newbranch = "branch_%s" % n
                 branches.append( ( c.sha , newbranch ) )
-                if not self.branches.has_key( newbranch ) :
-                    self.branches[newbranch] = branch(newbranch, self)
                 self.branch(newbranch).append( c )
-                c.set_branch( newbranch )
+                c.set_branch( self.branch(newbranch) )
     if n : print "WARNING : %d removed branch not automatically detected" % n
 
     # All branches detected at this point
