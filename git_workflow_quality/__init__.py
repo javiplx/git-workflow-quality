@@ -100,6 +100,9 @@ class Branch ( list ) :
     def is_primary ( self ) :
         return self.name in Branch.primary
 
+    def is_release ( self ) :
+        return self.name.startswith('release')
+
     def append ( self , commit ) :
         list.append( self , commit )
         commit.branch = self
@@ -223,7 +226,7 @@ class repository :
       multisource = 0
       mergeconflict = 0
       for branch in self.branches.values() :
-          if branch.is_primary() or branch.name.startswith('release') :
+          if branch.is_primary() or branch.is_release() :
               continue
           if branch.end().child and branch.end().forks :
               for sha in branch.end().forks :
@@ -269,7 +272,7 @@ class repository :
       for branch in [ b for b in self.branches.values() if b.is_primary() ] :
           output.append( report_fmt % branch.report(True) )
 
-      releases = [ b for b in self.branches.values() if not b.is_primary() and b.name.startswith('release') ]
+      releases = [ b for b in self.branches.values() if b.is_release() ]
       if releases :
           output.append( "" )
           output.append( "%-10s %8s   %7s    (%d branches)" % ( 'RELEASE' , '#commits' , '#merges' , len(releases) ) )
@@ -289,7 +292,7 @@ class repository :
                   if [c for c in commits if not c.parents] :
                       output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
 
-      branches = [ b for b in self.branches.values() if not b.is_primary() and not b.name.startswith('release') ]
+      branches = [ b for b in self.branches.values() if not b.is_primary() and not b.is_release() ]
       if branches :
           output.append( "" )
           output.append( "%-10s %8s   %7s   (%d branches)" % ( 'TOPIC' , '#commits' , '#merges' , len(branches) ) )
