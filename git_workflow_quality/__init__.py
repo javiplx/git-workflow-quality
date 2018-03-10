@@ -246,12 +246,13 @@ class repository :
 
   def report( self , details=False) :
       output = ['']
-      output.append( "Number of commits:  %s" % len(self.commits) )
-      output.append( "Number of branches: %s" % ( len(self.branches) - len([b for b in self.branches if b in self.primary]) ) )
-      output.append( "# initial commits:  %s" % len([c for c in self.commits.values() if not c.parent ]) )
-      output.append( "Number of merges:   %s" % len([c for c in self.commits.values() if c.parents]) )
-      output.append( "Ammended commits:   %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
-      output.append( "Unlabelled heads:   %s" % len([c for c in self.commits.values() if not c.branch and not c.child]) )
+      output.append( "Number of commits:      %s" % len(self.commits) )
+      output.append( "Number of branches:     %s" % ( len(self.branches) - len([b for b in self.branches if b in self.primary]) ) )
+      output.append( "# initial commits:      %s" % len([c for c in self.commits.values() if not c.parent ]) )
+      output.append( "Number of merges:       %s" % len([c for c in self.commits.values() if c.parents]) )
+      output.append( "Ammended commits:       %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
+      output.append( "Commits with no branch: %s" % len([c for c in self.commits.values() if not c.branch]) )
+      output.append( "Unlabelled heads:       %s" % len([c for c in self.commits.values() if not c.branch and not c.child]) )
 
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
