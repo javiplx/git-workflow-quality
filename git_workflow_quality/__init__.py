@@ -92,7 +92,7 @@ class Branch ( list ) :
 
     def target ( self ) :
         target = self.end().child
-        if not target :
+        if not target or not self.repo.commits[target].branch :
             return '<Final>'
         return self.repo.commits[target].branch.name
 
@@ -219,7 +219,7 @@ class repository :
       for commit in self.commits.values() :
           # Skip if main child is not a merge?
           # Do we really want to skip for primary branches??
-          if not commit.forks or not commit.child or commit.branch.is_primary() :
+          if not commit.forks or not commit.child or ( commit.branch and commit.branch.is_primary() ) :
               continue
           merges = []
           if self.commits[commit.child].parents :
@@ -337,25 +337,6 @@ class repository :
                   output.append( report_fmt % branch.report(True) )
 
       return "\n".join(output)
-
-  def purge ( self ) :
-      for c in self.commits.values() :
-          if not c.branch :
-              sha = c.parent
-              if self.commits.has_key(sha) :
-                  parent = self.commits[sha]
-                  if parent.child == c.sha :
-                      parent.child = None
-                  else :
-                      parent.forks.remove(c.sha)
-              for sha in c.parents :
-                  parent = self.commits[sha]
-                  if parent.child == c.sha :
-                      parent.child = None
-                  else :
-                      parent.forks.remove(c.sha)
-              self.commits.pop(c.sha)
-              self.order.remove(c.sha)
 
   def set_childs ( self ) :
 

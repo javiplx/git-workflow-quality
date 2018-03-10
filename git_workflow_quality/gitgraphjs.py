@@ -161,7 +161,8 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 c.render(fd)
         break_it = False
         for sha in c.forks :
-            target = repo.commits[sha]
+          target = repo.commits[sha]
+          if target.branch :
             if target.branch == current_branch :
                 end_of_branch = False
             if not target.parents :
@@ -223,7 +224,8 @@ def chrono_plot ( repo , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
     first = True
     for sha in repo.order :
-        c = repo.commits[sha]
+      c = repo.commits[sha]
+      if c.branch :
         if not c.branch in shown_branches :
             first = True
             shown_branches.append( c.branch )

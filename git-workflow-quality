@@ -16,8 +16,6 @@ if __name__ == '__main__' :
 
     print repo.report(args.detailed)
 
-    repo.purge()
-
     if args.graph :
         git_workflow_quality.gitgraphjs.graph( repo , args.graph )
 
