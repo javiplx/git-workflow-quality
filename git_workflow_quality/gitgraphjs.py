@@ -94,7 +94,7 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
 
     fd.write( gitgraph_head )
 
-    origins = unique_list([ c for c in repo.commits.values() if not c.parent ])
+    origins = unique_list([ c for c in repo.values() if not c.parent ])
 
     for origin in origins :
         # FIXME: multiple origins could be owned by the same branch ?
@@ -118,11 +118,11 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     while c.child :
         if c.parents :
             sha = c.parents[0]
-            if current_branch == repo.commits[sha].branch :
-                c.render( fd , repo.commits[sha] )
+            if current_branch == repo[sha].branch :
+                c.render( fd , repo[sha] )
                 pending.remove(c)
                 for sha in c.forks :
-                    target = repo.commits[sha]
+                    target = repo[sha]
                     fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(target.branch) , js_varname(current_branch) , js_branch( target.branch , len(shown_branches) ) ) )
                     shown_branches.append( target.branch )
                     pending.append( target )
@@ -135,19 +135,19 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( js_varname(current_branch) , p.sha , p.message ) )
                             pending.remove(p)
                             if p.child :
-                                pending.append(repo.commits[p.child])
-                c.render( fd , repo.commits[sha] )
+                                pending.append(repo[p.child])
+                c.render( fd , repo[sha] )
                 pending.remove( c )
             else :
-              if repo.commits[sha].branch not in shown_branches :
-                  c.render( fd , repo.commits[sha] )
+              if repo[sha].branch not in shown_branches :
+                  c.render( fd , repo[sha] )
                   pending.remove(c)
               else :
                 pending.append(c)
                 if c.child :
-                    pending.append( repo.commits[c.child] )
+                    pending.append( repo[c.child] )
                 for sha in c.forks :
-                    pending.append( repo.commits[sha] )
+                    pending.append( repo[sha] )
                 break
         else :
             if first :
@@ -156,20 +156,20 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             elif c.forks :
                 first = True
                 c.render(fd)
-            elif c.child and repo.commits[c.child].parents :
+            elif c.child and repo[c.child].parents :
                 c.render(fd)
             pending.remove(c)
-        end_of_branch = repo.commits[c.child].branch != current_branch
+        end_of_branch = repo[c.child].branch != current_branch
         for sha in c.forks :
-            if repo.commits[sha].branch == current_branch :
+            if repo[sha].branch == current_branch :
                 end_of_branch = False
-            if not repo.commits[sha].parents :
+            if not repo[sha].parents :
                 first = True
-                fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(current_branch) , js_branch( repo.commits[sha].branch , len(shown_branches) ) ) )
-                shown_branches.append( repo.commits[sha].branch )
-                pending.append( repo.commits[sha] )
+                fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(repo[sha].branch) , js_varname(current_branch) , js_branch( repo[sha].branch , len(shown_branches) ) ) )
+                shown_branches.append( repo[sha].branch )
+                pending.append( repo[sha] )
             else :
-              target = repo.commits[sha]
+              target = repo[sha]
               if target not in pending :
                     for p in pending :
                         if p.sha == target.parent :
@@ -178,10 +178,10 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 target.render( fd , c )
                 pending.remove( target )
                 if target.child :
-                    pending.append( repo.commits[target.child] )
+                    pending.append( repo[target.child] )
         if end_of_branch :
             shown_branches.remove( current_branch )
-        c = repo.commits[c.child]
+        c = repo[c.child]
         # This is likey caused by some bug on branch to commit assignment
         if c.branch != current_branch and not c.parents :
             pending.append(c)
@@ -190,38 +190,38 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
         shown_branches.remove( current_branch )
         if c.parents :
             sha = c.parents[0]
-            c.render( fd , repo.commits[sha] )
+            c.render( fd , repo[sha] )
             pending.remove( c )
         else :
             c.render(fd)
         for sha in c.forks :
-            if repo.commits[sha].branch not in shown_branches :
-                shown_branches.append( repo.commits[sha].branch )
-            pending.append( repo.commits[sha] )
+            if repo[sha].branch not in shown_branches :
+                shown_branches.append( repo[sha].branch )
+            pending.append( repo[sha] )
 
 def chrono_plot ( repo , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
     first = True
     for sha in repo.order :
-        c = repo.commits[sha]
+        c = repo[sha]
         if not c.branch in shown_branches :
             first = True
             shown_branches.append( c.branch )
-            fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(c.branch) , js_varname(repo.commits[c.parent].branch) , js_branch( c.branch , len(shown_branches) ) ) )
+            fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(c.branch) , js_varname(repo[c.parent].branch) , js_branch( c.branch , len(shown_branches) ) ) )
         if not c.parents :
             if first or c.forks or not c.child :
                 first = False
                 c.render(fd)
-            elif c.child and repo.commits[c.child].parents :
+            elif c.child and repo[c.child].parents :
                 first = True
                 c.render(fd)
         else :
             first = True
-            c.render(fd, repo.commits[c.parents[0]])
-            if not repo.commits[c.parents[0]].child :
-                if repo.commits[c.parents[0]].branch in shown_branches :
-                    shown_branches.remove( repo.commits[c.parents[0]].branch )
-        if c.child and c.branch != repo.commits[c.child].branch :
+            c.render(fd, repo[c.parents[0]])
+            if not repo[c.parents[0]].child :
+                if repo[c.parents[0]].branch in shown_branches :
+                    shown_branches.remove( repo[c.parents[0]].branch )
+        if c.child and c.branch != repo[c.child].branch :
             shown_branches.remove(c.branch)
 
 

@@ -87,22 +87,22 @@ class branch ( list ) :
         source = self.begin().parent
         if not source :
             return '<Initial>'
-        return self.repo.commits[source].branch
+        return self.repo[source].branch
 
     def target ( self ) :
         target = self.end().child
         if not target :
             return '<Final>'
-        return self.repo.commits[target].branch
+        return self.repo[target].branch
 
     def relations ( self ) :
         sources = []
         targets = []
         for c in self :
             for sha in c.parents :
-                sources.append( self.repo.commits[sha].branch )
+                sources.append( self.repo[sha].branch )
             for sha in c.forks :
-                targets.append( self.repo.commits[sha].branch )
+                targets.append( self.repo[sha].branch )
         return sources , targets
 
     def report ( self , branches=False ) :
@@ -139,13 +139,12 @@ def get_branches () :
             fd.close()
     return branches
 
-class repository :
+class repository ( dict ) :
 
   primary = ('master', 'develop')
 
   def __init__ ( self ) :
 
-    self.commits = {}
     self.order = []
     self.branches = {}
 
@@ -153,15 +152,15 @@ class repository :
     line = cmd.stdout.readline()
     while line[:-1] :
         sha , author , committer , message = line[:-1].strip('"').split(None, 3)
-        self.commits[sha] = commit( sha , author , committer , message )
+        self[sha] = commit( sha , author , committer , message )
         line = cmd.stdout.readline()
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--date-order', '--reverse', '--format="%H %at %ct %P"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
     while line[:-1] :
         sha , params = line[:-1].strip('"').split(None, 1)
-        self.commits[sha].set_params(params.split(None, 4))
-        if self.commits[sha].parent and self.commits[sha].parent not in self.order :
+        self[sha].set_params(params.split(None, 4))
+        if self[sha].parent and self[sha].parent not in self.order :
             raise Exception( "Incorrect input ordering" )
         self.order.append( sha )
         line = cmd.stdout.readline()
@@ -177,21 +176,21 @@ class repository :
       output = ['']
 
       multimerged = {}
-      for commit in self.commits.values() :
+      for commit in self.values() :
           # Skip if main child is not a merge?
           # Do we really want to skip for primary branches??
           if not commit.forks or not commit.child or commit.branch in self.primary :
               continue
           merges = []
-          if self.commits[commit.child].parents :
-              if self.commits[commit.child].parent != commit.sha :
-                  if self.commits[commit.child].branch == commit.branch :
+          if self[commit.child].parents :
+              if self[commit.child].parent != commit.sha :
+                  if self[commit.child].branch == commit.branch :
                       # This is an auto-merge and should be detected somewhere
                       pass
                   else :
                       merges.append( commit.child )
-          for sha in [sha for sha in commit.forks if self.commits[sha].parents and self.commits[sha].parent != commit.sha ] :
-                  if self.commits[sha].branch == commit.branch :
+          for sha in [sha for sha in commit.forks if self[sha].parents and self[sha].parent != commit.sha ] :
+                  if self[sha].branch == commit.branch :
                       # This is an auto-merge and should be detected somewhere
                       pass
                   else :
@@ -217,10 +216,10 @@ class repository :
               continue
           if branch.end().child and branch.end().forks :
               for sha in branch.end().forks :
-                  if self.branch(self.commits[sha].branch).begin().parent == branch.end().sha :
+                  if self.branch(self[sha].branch).begin().parent == branch.end().sha :
                       reutilized += 1
           if branch.end().child and branch.end().parents :
-              if self.commits[branch.end().parents[0]].sha == self.commits[branch.end().child].parent :
+              if self[branch.end().parents[0]].sha == self[branch.end().child].parent :
                   mergeconflict += 1
           source = branch.source()
           target = branch.target()
@@ -246,13 +245,13 @@ class repository :
 
   def report( self , details=False) :
       output = ['']
-      output.append( "Number of commits:      %s" % len(self.commits) )
+      output.append( "Number of commits:      %s" % len(self) )
       output.append( "Number of branches:     %s" % ( len(self.branches) - len([b for b in self.branches if b in self.primary]) ) )
-      output.append( "# initial commits:      %s" % len([c for c in self.commits.values() if not c.parent ]) )
-      output.append( "Number of merges:       %s" % len([c for c in self.commits.values() if c.parents]) )
-      output.append( "Ammended commits:       %s" % len([c for c in self.commits.values() if c.author != c.committer and not c.parents]) )
-      output.append( "Commits with no branch: %s" % len([c for c in self.commits.values() if not c.branch]) )
-      output.append( "Unlabelled heads:       %s" % len([c for c in self.commits.values() if not c.branch and not c.child]) )
+      output.append( "# initial commits:      %s" % len([c for c in self.values() if not c.parent ]) )
+      output.append( "Number of merges:       %s" % len([c for c in self.values() if c.parents]) )
+      output.append( "Ammended commits:       %s" % len([c for c in self.values() if c.author != c.committer and not c.parents]) )
+      output.append( "Commits with no branch: %s" % len([c for c in self.values() if not c.branch]) )
+      output.append( "Unlabelled heads:       %s" % len([c for c in self.values() if not c.branch and not c.child]) )
 
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
@@ -303,7 +302,7 @@ class repository :
   def set_childs ( self ) :
 
     branches = []
-    for commit in self.commits.values() :
+    for commit in self.values() :
       merged = re.search("Merge pull request #(?P<id>[0-9]*) from (?P<repo>[^/]*)/(?P<source>.*)", commit.message )
       if merged :
         if not commit.parents :
@@ -311,7 +310,7 @@ class repository :
         else :
           source = merged.group('source').strip("'")
           branches.append( ( commit.parents[0] , source ) )
-          self.commits[commit.parents[0]].set_branch( source )
+          self[commit.parents[0]].set_branch( source )
       else :
         merged = re.search("Merge (branch )?(?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
         if merged :
@@ -320,10 +319,10 @@ class repository :
           else :
             source = merged.group('source').strip("'")
             branches.append( ( commit.parents[0] , source ) )
-            self.commits[commit.parents[0]].set_branch(source)
+            self[commit.parents[0]].set_branch(source)
             target = merged.group('target').strip("'")
             branches.append( ( commit.parent , target ) )
-            self.commits[commit.parent].set_branch(target)
+            self[commit.parent].set_branch(target)
         else :
             merged = re.search("Merge remote-tracking branch (?P<source>[^ ]*) into (?P<target>[^ ]*)", commit.message)
             if merged :
@@ -332,19 +331,19 @@ class repository :
                 else :
                     source = merged.group('source').strip("'").replace('origin/', '')
                     branches.append( ( commit.parents[0] , source ) )
-                    self.commits[commit.parents[0]].set_branch(source)
+                    self[commit.parents[0]].set_branch(source)
                     target = merged.group('target').strip("'")
                     branches.append( ( commit.parent , target ) )
-                    self.commits[commit.parent].set_branch(target)
+                    self[commit.parent].set_branch(target)
 
     for sha,branch in get_branches() :
         branches.append( ( sha , branch ) )
-        self.commits[sha].set_branch( branch )
+        self[sha].set_branch( branch )
 
     n = 0
-    for commit in self.commits.values() :
+    for commit in self.values() :
         for parent in commit.parents :
-            c = self.commits[parent]
+            c = self[parent]
             if not c.branch :
                 n += 1
                 newbranch = "branch_%s" % n
@@ -355,8 +354,8 @@ class repository :
     # All branches detected at this point
 
     for sha,branch in branches :
-        commit = self.commits[sha]
-        c = self.commits[commit.parent]
+        commit = self[sha]
+        c = self[commit.parent]
         while c :
             if not c.parent : # Initial commit detection
                 c.set_branch( branch )
@@ -364,28 +363,28 @@ class repository :
             if c.branch and not branch in repository.primary :
                 break
             c.set_branch(branch)
-            c = self.commits[c.parent]
+            c = self[c.parent]
 
-    for c in self.commits.values() :
+    for c in self.values() :
         if c.parent :
-            self.commits[c.parent].forks.append( c.sha )
+            self[c.parent].forks.append( c.sha )
         for parent in c.parents :
-            self.commits[parent].forks.append( c.sha )
+            self[parent].forks.append( c.sha )
 
-    for c in self.commits.values() :
+    for c in self.values() :
         if len(c.forks) == 1 :
             c.set_child( c.forks[0] )
         elif len(c.forks) > 1 :
-            child = [ sha for sha in c.forks if self.commits[sha].branch == c.branch ]
+            child = [ sha for sha in c.forks if self[sha].branch == c.branch ]
             if child :
                  c.set_child( child[0] )
             else :
-                 c.set_child( sorted([ self.commits[sha] for sha in c.forks ], key=lambda x : x.committer_date)[0].sha )
+                 c.set_child( sorted([ self[sha] for sha in c.forks ], key=lambda x : x.committer_date)[0].sha )
 
   def set_branches ( self ) :
 
       for sha in self.order :
-          commit = self.commits[sha]
+          commit = self[sha]
           if not self.branches.has_key( commit.branch ) :
               self.branches[commit.branch] = branch(commit.branch, self)
           self.branch(commit.branch).append( commit )
