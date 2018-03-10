@@ -99,7 +99,7 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
     for origin in origins :
         # FIXME: multiple origins could be owned by the same branch ?
         shown_branches.append( origin.branch )
-        fd.write( 'var %s = gitgraph.branch({%s});\n' % ( js_varname(origin.branch) , js_branch(origin.branch) ) )
+        origin.branch.render( fd )
 
     if mode == 'date' :
         chrono_plot(repo, fd)
@@ -123,7 +123,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 pending.remove(c)
                 for sha in c.forks :
                     target = repo.commits[sha]
-                    fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(target.branch) , js_varname(current_branch) , js_branch( target.branch , len(shown_branches) ) ) )
+                    target.branch.render( fd , current_branch , shown_branches )
                     shown_branches.append( target.branch )
                     pending.append( target )
                 break
@@ -132,7 +132,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 for sha in c.forks :
                     for p in pending :
                         if p.sha in c.parents :
-                            fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( js_varname(current_branch) , p.sha , p.message ) )
+                            fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( current_branch.as_var() , p.sha , p.message ) )
                             pending.remove(p)
                             if p.child :
                                 pending.append(repo.commits[p.child])
@@ -165,7 +165,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 end_of_branch = False
             if not repo.commits[sha].parents :
                 first = True
-                fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(repo.commits[sha].branch) , js_varname(current_branch) , js_branch( repo.commits[sha].branch , len(shown_branches) ) ) )
+                repo.commits[sha].branch.render( fd , current_branch , shown_branches )
                 shown_branches.append( repo.commits[sha].branch )
                 pending.append( repo.commits[sha] )
             else :
@@ -207,7 +207,7 @@ def chrono_plot ( repo , fd=sys.stdout) :
         if not c.branch in shown_branches :
             first = True
             shown_branches.append( c.branch )
-            fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(c.branch) , js_varname(repo.commits[c.parent].branch) , js_branch( c.branch , len(shown_branches) ) ) )
+            c.branch.render( fd , repo.commits[c.parent].branch , shown_branches )
         if not c.parents :
             if first or c.forks or not c.child :
                 first = False
@@ -224,18 +224,4 @@ def chrono_plot ( repo , fd=sys.stdout) :
         if c.child and c.branch != repo.commits[c.child].branch :
             shown_branches.remove(c.branch)
 
-
-def js_varname ( var ) :
-    if not var : var = 'NONAME'
-    return "branch_" + var.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
-
-def js_branch ( name , count=2 ) :
-    json = 'name:"%s"' % name
-    if name == 'master' :
-        json += ", column:0"
-    elif name == 'develop' :
-        json += ", column:1"
-    else :
-        json += ", column:%d" % count
-    return json
 
