@@ -15,8 +15,8 @@ class commit :
         self.message = message.replace('"', '&quot;' )
 
     def set_params ( self , line ) :
-        self.author_date = line[0]
-        self.committer_date = line[1]
+        self.author_date = int(line[0])
+        self.committer_date = int(line[1])
         self.parent = None
         self.parents = ()
         self.branch = ''
@@ -48,6 +48,9 @@ class commit :
             fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( gitgraphjs.js_varname(merged_commit.branch) , gitgraphjs.js_varname(self.branch) , self.sha , self.message ) )
         else :
             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( gitgraphjs.js_varname(self.branch) , self.sha , self.message ) )
+
+    def __cmp__ ( self , other ) :
+        return self.committer_date.__cmp__( other.committer_date )
 
     def __str__ ( self ) :
         parents = " ".join(self.parents)
@@ -382,6 +385,9 @@ class repository :
                 break
             c.set_branch(branch)
             c = self.commits[c.parent]
+
+    for branch in self.branches.values() :
+        branch.sort()
 
     for c in self.commits.values() :
         if c.parent :
