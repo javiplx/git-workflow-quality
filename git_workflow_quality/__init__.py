@@ -108,7 +108,7 @@ class Branch ( list ) :
         if self == other :
             return True
         if self.is_primary() and other.is_primary() :
-            return Branch.primary.index(self.name) < Branch.primary.index(other.name)
+            return Branch.primary.index(other.name) < Branch.primary.index(self.name)
         if other.is_primary() :
             return True
         return False
