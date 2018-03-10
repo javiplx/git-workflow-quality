@@ -142,15 +142,13 @@ class Branch ( list ) :
     def as_var ( self ) :
         return "branch_" + self.name.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
 
-    def as_json ( self , count=2 ) :
-        json = 'name:"%s"' % self.name
-        if self.name == 'master' :
-            json += ", column:0"
-        elif self.name == 'develop' :
-            json += ", column:1"
+    def render ( self , fd , parent , shown_branches ) :
+        if self.is_primary() :
+            column = Branch.primary.index(self.name)
         else :
-            json += ", column:%d" % count
-        return json
+            column = len(shown_branches)
+        json = 'name:"%s", column:%d' % ( self , column )
+        fd.write( 'var %s = %s.branch({%s});\n' % ( self.as_var() , parent.as_var() , json ) )
 
 
 def get_branches () :

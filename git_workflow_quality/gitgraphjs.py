@@ -123,7 +123,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 pending.remove(c)
                 for sha in c.forks :
                     target = repo.commits[sha]
-                    fd.write( 'var %s = %s.branch({%s});\n' % ( target.branch.as_var() , current_branch.as_var() , target.branch.as_json (len(shown_branches) ) ) )
+                    target.branch.render( fd , current_branch , shown_branches )
                     shown_branches.append( target.branch )
                     pending.append( target )
                 break
@@ -165,7 +165,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 end_of_branch = False
             if not repo.commits[sha].parents :
                 first = True
-                fd.write( 'var %s = %s.branch({%s});\n' % ( repo.commits[sha].branch.as_var() , current_branch.as_var() , repo.commits[sha].branch.as_json( len(shown_branches) ) ) )
+                repo.commits[sha].branch.render( fd , current_branch , shown_branches )
                 shown_branches.append( repo.commits[sha].branch )
                 pending.append( repo.commits[sha] )
             else :
@@ -207,7 +207,7 @@ def chrono_plot ( repo , fd=sys.stdout) :
         if not c.branch in shown_branches :
             first = True
             shown_branches.append( c.branch )
-            fd.write( 'var %s = %s.branch({%s});\n' % ( c.branch.as_var() , repo.commits[c.parent].branch.as_var() , c.branch.as_json( len(shown_branches) ) ) )
+            c.branch.render( fd , repo.commits[c.parent].branch , shown_branches )
         if not c.parents :
             if first or c.forks or not c.child :
                 first = False
