@@ -102,6 +102,7 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
 
 
 def forward_plot ( repo , c , pending , fd=sys.stdout ) :
+    realFirst = True
     first = True
     current_branch = c.branch
     while c.child :
@@ -128,8 +129,14 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 c.render( fd , repo.commits[sha] )
             else :
               if repo.commits[sha].branch not in shown_branches :
+                if realFirst :
                   c.render( fd , repo.commits[sha] )
+                else :
+                  target = repo.commits[sha]
+                  pending.append(c)
+                  break
               else :
+               if c not in pending :
                 pending.append(c)
                 if c.child :
                     if repo.commits[c.child].branch != current_branch :
@@ -137,7 +144,9 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 for sha in c.forks :
                     if repo.commits[sha].branch != current_branch :
                         pending.append( repo.commits[sha] )
-                break
+               elif realFirst :
+                   pending.append( c)
+               break
         else :
             if first :
                 first = False
@@ -147,6 +156,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 c.render(fd)
             elif c.child and repo.commits[c.child].parents :
                 c.render(fd)
+        break_it = False
         end_of_branch = repo.commits[c.child].branch != current_branch
         for sha in c.forks :
             target = repo.commits[sha]
@@ -159,7 +169,8 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 pending.append( target )
             else :
               if target not in pending :
-                  pending.append( target )
+                  # We just assume that target will appear on pending in the future
+                  break_it = True
               else :
                 target.render( fd , c )
                 pending.remove( target )
@@ -169,8 +180,22 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                     pending.append( repo.commits[sha] )
         if end_of_branch :
             shown_branches.remove( current_branch )
+            if repo.commits[c.child].branch not in shown_branches :
+                shown_branches.append( repo.commits[c.child].branch )
+            break
+        if break_it :
+            if c.child :
+                pending.append( repo.commits[c.child] )
             break
         c = repo.commits[c.child]
+        realFirst = False
+        if c.parents :
+            for sha in c.parents :
+                if repo.commits[sha] in pending :
+                    pending.append(c)
+                    break_it = True
+            if break_it :
+                break
         # This is likey caused by some bug on branch to commit assignment
         if c.branch != current_branch and not c.parents :
             pending.append(c)
