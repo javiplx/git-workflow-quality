@@ -106,6 +106,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     first = True
     current_branch = c.branch
     while c.child :
+        end_of_branch = repo.commits[c.child].branch != current_branch
         if c.parents :
             sha = c.parents[0]
             if current_branch != c.branch :
@@ -156,8 +157,9 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 c.render(fd)
             elif c.child and repo.commits[c.child].parents :
                 c.render(fd)
+            elif end_of_branch :
+                c.render(fd)
         break_it = False
-        end_of_branch = repo.commits[c.child].branch != current_branch
         for sha in c.forks :
             target = repo.commits[sha]
             if target.branch == current_branch :
@@ -180,8 +182,12 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                     pending.append( repo.commits[sha] )
         if end_of_branch :
             shown_branches.remove( current_branch )
-            if repo.commits[c.child].branch not in shown_branches :
-                shown_branches.append( repo.commits[c.child].branch )
+            if c.child :
+                target = repo.commits[c.child]
+                if target.branch not in shown_branches :
+                    target.branch.render(  fd , current_branch , shown_branches )
+                    shown_branches.append( target.branch )
+                    pending.append( target )
             break
         if break_it :
             if c.child :
@@ -209,6 +215,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             c.render(fd)
         for sha in c.forks :
             if repo.commits[sha].branch not in shown_branches :
+                repo.commits[sha].branch.render( fd , current_branch , shown_branches )
                 shown_branches.append( repo.commits[sha].branch )
             pending.append( repo.commits[sha] )
 
