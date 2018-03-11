@@ -73,17 +73,6 @@ gitgraph_tail = """
 """
 
 
-class unique_list ( list ) :
-
-    def append ( self , item ) :
-        if item not in self :
-            list.append( self , item )
-
-    def remove ( self , item ) :
-        if item in self :
-            list.remove( self , item )
-
-
 def graph ( repo , mode='topo' , filename='commits.html' ) :
 
     if not mode in ( 'topo' , 'date' ) :
@@ -94,7 +83,7 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
 
     fd.write( gitgraph_head )
 
-    origins = unique_list([ c for c in repo.commits.values() if not c.parent ])
+    origins = [ c for c in repo.commits.values() if not c.parent ]
 
     for origin in origins :
         # FIXME: multiple origins could be owned by the same branch ?
@@ -118,13 +107,13 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     while c.child :
         if c.parents :
             sha = c.parents[0]
-            if current_branch == repo.commits[sha].branch :
+            if current_branch != c.branch :
                 c.render( fd , repo.commits[sha] )
                 pending.remove(c)
+                target = repo.commits[c.child]
+                pending.append( target )
                 for sha in c.forks :
                     target = repo.commits[sha]
-                    target.branch.render( fd , current_branch , shown_branches )
-                    shown_branches.append( target.branch )
                     pending.append( target )
                 break
             elif c.forks :
@@ -137,17 +126,17 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                             if p.child :
                                 pending.append(repo.commits[p.child])
                 c.render( fd , repo.commits[sha] )
-                pending.remove( c )
             else :
               if repo.commits[sha].branch not in shown_branches :
                   c.render( fd , repo.commits[sha] )
-                  pending.remove(c)
               else :
                 pending.append(c)
                 if c.child :
-                    pending.append( repo.commits[c.child] )
+                    if repo.commits[c.child].branch != current_branch :
+                        pending.append( repo.commits[c.child] )
                 for sha in c.forks :
-                    pending.append( repo.commits[sha] )
+                    if repo.commits[sha].branch != current_branch :
+                        pending.append( repo.commits[sha] )
                 break
         else :
             if first :
@@ -158,11 +147,9 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 c.render(fd)
             elif c.child and repo.commits[c.child].parents :
                 c.render(fd)
-            pending.remove(c)
         end_of_branch = repo.commits[c.child].branch != current_branch
         for sha in c.forks :
-          target = repo.commits[sha]
-          if target.branch :
+            target = repo.commits[sha]
             if target.branch == current_branch :
                 end_of_branch = False
             if not target.parents :
@@ -172,16 +159,17 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 pending.append( target )
             else :
               if target not in pending :
-                    for p in pending :
-                        if p.sha == target.parent :
-                            break
+                  pending.append( target )
               else :
                 target.render( fd , c )
                 pending.remove( target )
                 if target.child :
                     pending.append( repo.commits[target.child] )
+                for sha in target.forks :
+                    pending.append( repo.commits[sha] )
         if end_of_branch :
             shown_branches.remove( current_branch )
+            break
         c = repo.commits[c.child]
         # This is likey caused by some bug on branch to commit assignment
         if c.branch != current_branch and not c.parents :
@@ -192,7 +180,6 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
         if c.parents :
             sha = c.parents[0]
             c.render( fd , repo.commits[sha] )
-            pending.remove( c )
         else :
             c.render(fd)
         for sha in c.forks :
