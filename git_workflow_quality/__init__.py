@@ -62,11 +62,10 @@ class commit :
         return "%-20s %s : %40s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , '<None>' , self.child.sha , parents , forks , self.message )
 
 
-class branch ( list ) :
+class Branch ( list ) :
 
-    def __init__ ( self , branchname , repo ) :
+    def __init__ ( self , branchname ) :
         self.name = branchname
-        self.repo = repo
         list.__init__( self )
 
     def commits ( self ) :
@@ -384,6 +383,6 @@ class repository ( dict ) :
 
       for commit in self.order :
           if not self.branches.has_key( commit.branch ) :
-              self.branches[commit.branch] = branch(commit.branch, self)
+              self.branches[commit.branch] = Branch(commit)
           self.branch(commit.branch).append( commit )
 
