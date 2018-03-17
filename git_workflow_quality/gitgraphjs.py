@@ -171,7 +171,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
               target = repo[sha]
               if target not in pending :
                     for p in pending :
-                        if p.sha == target.parent :
+                        if p == target.parent :
                             break
               else :
                 target.render( fd , c )
@@ -200,12 +200,11 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
 def chrono_plot ( repo , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
     first = True
-    for sha in repo.order :
-        c = repo[sha]
+    for c in repo.order :
         if not c.branch in shown_branches :
             first = True
             shown_branches.append( c.branch )
-            fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(c.branch) , js_varname(repo[c.parent].branch) , js_branch( c.branch , len(shown_branches) ) ) )
+            fd.write( 'var %s = %s.branch({%s});\n' % ( js_varname(c.branch) , js_varname(c.parent.branch) , js_branch( c.branch , len(shown_branches) ) ) )
         if not c.parents :
             if first or c.forks or not c.child :
                 first = False
