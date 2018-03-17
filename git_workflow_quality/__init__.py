@@ -232,7 +232,7 @@ class Repository ( dict ) :
                       # This is an auto-merge and should be detected somewhere
                       pass
                   else :
-                      merges.append( sha )
+                      merges.append( F )
           if len(merges) > 1 :
               if not multimerged.has_key(len(merges)) :
                   multimerged[len(merges)] = []
