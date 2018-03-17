@@ -6,25 +6,24 @@ import re
 import os
 
 
-class commit :
+class Commit :
 
-    def __init__ ( self , sha , repo , author , committer , message ) :
+    def __init__ ( self , sha , author , committer , message ) :
         self.sha = sha
-        self.repo = repo
         self.author = author
         self.committer = committer
         self.message = message.replace('"', '&quot;' )
 
-    def set_params ( self , line ) :
+    def set_params ( self , repo , line ) :
         self.author_date = line[0]
         self.committer_date = line[1]
         self.parent = None
         self.parents = ()
         self.branch = None
         if len(line) > 2 :
-            self.parent = self.repo[line[2]]
+            self.parent = repo[line[2]]
             if len(line) > 3 :
-                self.parents = [ self.repo[sha] for sha in line[3].split() ]
+                self.parents = [ repo[sha] for sha in line[3].split() ]
                 if len(self.parents) > 1 :
                     raise Exception( "Octopus merges on %s from %s not handled" % ( self.sha , ", ".join([c.sha for c in self.parents]) ) )
         self.child = None
@@ -152,14 +151,14 @@ class repository ( dict ) :
     line = cmd.stdout.readline()
     while line[:-1] :
         sha , author , committer , message = line[:-1].strip('"').split(None, 3)
-        self[sha] = commit( sha , self , author , committer , message )
+        self[sha] = Commit( sha , author , committer , message )
         line = cmd.stdout.readline()
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--date-order', '--reverse', '--format="%H %at %ct %P"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
     while line[:-1] :
         sha , params = line[:-1].strip('"').split(None, 1)
-        self[sha].set_params(params.split(None, 4))
+        self[sha].set_params(self, params.split(None, 4))
         if self[sha].parent and self[sha].parent not in self.order :
             raise Exception( "Incorrect input ordering" )
         self.order.append( self[sha] )
