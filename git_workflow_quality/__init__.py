@@ -18,6 +18,7 @@ class Commit :
         self.branch = None
         self.child = None
         self.forks = []
+        self.rendered = False
 
     def set_branch ( self , branch ) :
         if branch < self.branch :
@@ -52,6 +53,7 @@ class Commit :
             fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( merged_commit.branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
         else :
             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( self.branch.as_var() , self.sha , self.message ) )
+        self.rendered = True
 
     def __cmp__ ( self , other ) :
         return self.committer_date.__cmp__( other.committer_date )
@@ -70,6 +72,7 @@ class Branch ( list ) :
 
     def __init__ ( self , branchname ) :
         self.name = branchname
+        self.rendered = False
         list.__init__( self )
 
     def commits ( self ) :
@@ -155,6 +158,7 @@ class Branch ( list ) :
             fd.write( 'var %s = %s.branch({%s});\n' % ( self.as_var() , parent.as_var() , json ) )
         else :
             fd.write( 'var %s = gitgraph.branch({%s});\n' % ( self.as_var() , json ) )
+        self.rendered = True
 
 
 def get_branches () :
