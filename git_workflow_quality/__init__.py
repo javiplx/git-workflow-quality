@@ -13,31 +13,21 @@ class Commit :
         self.author = author
         self.committer = committer
         self.message = message.replace('"', '&quot;' )
-
-    def set_params ( self , repo , line ) :
-        self.author_date = line[0]
-        self.committer_date = line[1]
         self.parent = None
         self.parents = ()
         self.branch = None
-        if len(line) > 2 :
-            self.parent = repo[line[2]]
-            if len(line) > 3 :
-                self.parents = [ repo[sha] for sha in line[3].split() ]
-                if len(self.parents) > 1 :
-                    raise Exception( "Octopus merges on %s from %s not handled" % ( self.sha , ", ".join([c.sha for c in self.parents]) ) )
         self.child = None
         self.forks = []
 
     def set_branch ( self , branch ) :
         if self.branch :
-            if self.branch in repository.primary :
-                if branch not in repository.primary :
+            if self.branch in Repository.primary :
+                if branch not in Repository.primary :
                     return
                 # self.branch has a higher weight respect to branch
-                if repository.primary.index(self.branch) < repository.primary.index(branch) :
+                if Repository.primary.index(self.branch) < Repository.primary.index(branch) :
                     return
-            if not branch in repository.primary and branch != self.branch :
+            if not branch in Repository.primary and branch != self.branch :
                 raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
         self.branch = branch
 
@@ -138,7 +128,7 @@ def get_branches () :
             fd.close()
     return branches
 
-class repository ( dict ) :
+class Repository ( dict ) :
 
   primary = ('master', 'develop')
 
@@ -158,7 +148,7 @@ class repository ( dict ) :
     line = cmd.stdout.readline()
     while line[:-1] :
         sha , params = line[:-1].strip('"').split(None, 1)
-        self[sha].set_params(self, params.split(None, 4))
+        self.set_params( sha , params.split(None, 4))
         if self[sha].parent and self[sha].parent not in self.order :
             raise Exception( "Incorrect input ordering" )
         self.order.append( self[sha] )
@@ -167,6 +157,16 @@ class repository ( dict ) :
     self.set_childs()
 
     self.set_branches()
+
+  def set_params ( self , sha , line ) :
+      self[sha].author_date = line[0]
+      self[sha].committer_date = line[1]
+      if len(line) > 2 :
+          self[sha].parent = self[line[2]]
+          if len(line) > 3 :
+              self[sha].parents = [ self[sha1] for sha1 in line[3].split() ]
+              if len(self[sha].parents) > 1 :
+                  raise Exception( "Octopus merges on %s from %s not handled" % ( self[sha].sha , ", ".join([c.sha for c in self[sha].parents]) ) )
 
   def branch ( self , branchname ) :
       return self.branches[branchname]
@@ -255,11 +255,11 @@ class repository ( dict ) :
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
       output.append( "%-25s %8s   %7s" % ( 'PRIMARY' , '#commits' , '#merges' ) )
-      for branch in repository.primary :
+      for branch in Repository.primary :
           if self.branches.has_key(branch) :
               output.append( report_fmt % self.branch(branch).report(True) )
 
-      releases = [ b for b in self.branches if b not in repository.primary and str(b).startswith('release') ]
+      releases = [ b for b in self.branches if b not in Repository.primary and str(b).startswith('release') ]
       if releases :
           output.append( "" )
           output.append( "%-10s %8s   %7s    (%d branches)" % ( 'RELEASE' , '#commits' , '#merges' , len(releases) ) )
@@ -279,7 +279,7 @@ class repository ( dict ) :
                   if [c for c in commits if not c.parents] :
                       output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
 
-      branches = [ b for b in self.branches if b not in repository.primary and not str(b).startswith('release') ]
+      branches = [ b for b in self.branches if b not in Repository.primary and not str(b).startswith('release') ]
       if branches :
           output.append( "" )
           output.append( "%-10s %8s   %7s   (%d branches)" % ( 'TOPIC' , '#commits' , '#merges' , len(branches) ) )
@@ -357,7 +357,7 @@ class repository ( dict ) :
             if not c.parent : # Initial commit detection
                 c.set_branch( branch )
                 break
-            if c.branch and not branch in repository.primary :
+            if c.branch and not branch in Repository.primary :
                 break
             c.set_branch(branch)
             c = c.parent

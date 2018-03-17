@@ -12,7 +12,7 @@ if __name__ == '__main__' :
     parser.add_argument('--graph', choices=['topo', 'date'], help='Generate gitgraphjs file')
     args = parser.parse_args()
 
-    repo = git_workflow_quality.repository()
+    repo = git_workflow_quality.Repository()
 
     print repo.report(args.detailed)
 
