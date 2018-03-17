@@ -254,6 +254,7 @@ class Repository ( dict ) :
               continue
           if branch.end().child and branch.end().forks :
               for child in branch.end().forks :
+                if child.branch and child.branch.begin() :
                   if child.branch.begin().parent == branch.end() :
                       reutilized += 1
           if branch.end().child and branch.end().parents :
