@@ -33,6 +33,20 @@ class Commit :
         self.child = commit
         self.forks.remove(commit)
 
+    def get_parents ( self ) :
+        parents = []
+        if self.parent :
+            parents.append( self.parent )
+        parents.extend( self.parents )
+        return parents
+
+    def get_childs ( self ) :
+        childs = []
+        if self.child :
+            childs.append( self.child )
+        childs.extend( self.forks )
+        return childs
+
     def render ( self , fd , merged_commit=None ) :
         if self.parents :
             fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( merged_commit.branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
