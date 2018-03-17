@@ -102,49 +102,16 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
 
 
 def forward_plot ( repo , c , pending , fd=sys.stdout ) :
-    realFirst = True
     first = True
     current_branch = c.branch
     while c.child :
         end_of_branch = c.child.branch != current_branch
         if c.parents :
-            if current_branch != c.branch :
-                c.render( fd , c.parents[0] )
-                pending.remove(c)
-                target = c.child
-                pending.append( target )
-                for target in c.forks :
-                    pending.append( target )
-                break
-            elif c.forks :
-                first = True
-                for child in c.forks :
-                    for p in pending :
-                        if p in c.parents :
-                            fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( current_branch.as_var() , p.sha , p.message ) )
-                            pending.remove(p)
-                            if p.child :
-                                pending.append(p.child)
-                c.render( fd , c.parents[0] )
-            else :
-              if c.parents[0].branch not in shown_branches :
-                if realFirst :
-                  c.render( fd , c.parents[0] )
-                else :
-                  pending.append(c)
-                  break
-              else :
-               if c not in pending :
+            if [ p for p in c.get_parents() if not p.rendered ] :
                 pending.append(c)
-                if c.child :
-                    if c.child.branch != current_branch :
-                        pending.append( c.child )
-                for child in c.forks :
-                    if child.branch != current_branch :
-                        pending.append( child )
-               elif realFirst :
-                   pending.append( c)
-               break
+                break
+            else :
+                c.render( fd , c.parents[0] )
         else :
             if first :
                 first = False
@@ -156,64 +123,26 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 c.render(fd)
             elif end_of_branch :
                 c.render(fd)
-        break_it = False
+            else :
+                c.rendered = True
         for target in c.forks :
-          if target.branch :
-            if target.branch == current_branch :
-                end_of_branch = False
-            if not target.parents :
-                first = True
+            if target.branch :
                 target.branch.render( fd , current_branch , shown_branches )
                 shown_branches.append( target.branch )
                 pending.append( target )
-            else :
-              if target not in pending :
-                  # We just assume that target will appear on pending in the future
-                  break_it = True
-              else :
-                target.render( fd , c )
-                pending.remove( target )
-                if target.child :
-                    pending.append( target.child )
-                for child in target.forks :
-                    pending.append( child )
-        if end_of_branch :
-            shown_branches.remove( current_branch )
-            if c.child :
-                target = c.child
-                if target.branch not in shown_branches :
-                    target.branch.render(  fd , current_branch , shown_branches )
-                    shown_branches.append( target.branch )
-                    pending.append( target )
-            break
-        if break_it :
-            if c.child :
-                pending.append( c.child )
-            break
         c = c.child
-        realFirst = False
-        if c.parents :
-            for parent in c.parents :
-                if parent in pending :
-                    pending.append(c)
-                    break_it = True
-            if break_it :
-                break
-        # This is likey caused by some bug on branch to commit assignment
-        if c.branch != current_branch and not c.parents :
-            pending.append(c)
+        if end_of_branch :
+            if c in pending :
+                pending.remove(c)
+            if c.branch :
+                if c.branch not in shown_branches :
+                    c.branch.render( fd , current_branch , shown_branches )
+                    shown_branches.append( c.branch )
+                shown_branches.remove( current_branch )
+                forward_plot(repo, c, pending, fd)
             break
     else :
-        shown_branches.remove( current_branch )
-        if c.parents :
-            c.render( fd , c.parents[0] )
-        else :
-            c.render(fd)
-        for child in c.forks :
-            if child.branch not in shown_branches :
-                child.branch.render( fd , current_branch , shown_branches )
-                shown_branches.append( child.branch )
-            pending.append( child )
+        c.render(fd)
 
 def chrono_plot ( repo , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
