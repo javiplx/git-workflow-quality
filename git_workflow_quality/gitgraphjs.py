@@ -117,9 +117,8 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     current_branch = c.branch
     while c.child :
         if c.parents :
-            sha = c.parents[0]
-            if current_branch == repo[sha].branch :
-                c.render( fd , repo[sha] )
+            if current_branch == c.parents[0].branch :
+                c.render( fd , c.parents[0] )
                 pending.remove(c)
                 for sha in c.forks :
                     target = repo[sha]
@@ -131,16 +130,16 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 first = True
                 for sha in c.forks :
                     for p in pending :
-                        if p.sha in c.parents :
+                        if p in c.parents :
                             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( js_varname(current_branch) , p.sha , p.message ) )
                             pending.remove(p)
                             if p.child :
                                 pending.append(repo[p.child])
-                c.render( fd , repo[sha] )
+                c.render( fd , c.parents[0] )
                 pending.remove( c )
             else :
-              if repo[sha].branch not in shown_branches :
-                  c.render( fd , repo[sha] )
+              if c.parents[0].branch not in shown_branches :
+                  c.render( fd , c.parents[0] )
                   pending.remove(c)
               else :
                 pending.append(c)
@@ -189,8 +188,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     else :
         shown_branches.remove( current_branch )
         if c.parents :
-            sha = c.parents[0]
-            c.render( fd , repo[sha] )
+            c.render( fd , c.parents[0] )
             pending.remove( c )
         else :
             c.render(fd)
@@ -217,10 +215,10 @@ def chrono_plot ( repo , fd=sys.stdout) :
                 c.render(fd)
         else :
             first = True
-            c.render(fd, repo[c.parents[0]])
-            if not repo[c.parents[0]].child :
-                if repo[c.parents[0]].branch in shown_branches :
-                    shown_branches.remove( repo[c.parents[0]].branch )
+            c.render(fd, c.parents[0])
+            if not c.parents[0].child :
+                if c.parents[0].branch in shown_branches :
+                    shown_branches.remove( c.parents[0].branch )
         if c.child and c.branch != repo[c.child].branch :
             shown_branches.remove(c.branch)
 

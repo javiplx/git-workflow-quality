@@ -8,8 +8,9 @@ import os
 
 class commit :
 
-    def __init__ ( self , sha , author , committer , message ) :
+    def __init__ ( self , sha , repo , author , committer , message ) :
         self.sha = sha
+        self.repo = repo
         self.author = author
         self.committer = committer
         self.message = message.replace('"', '&quot;' )
@@ -23,9 +24,9 @@ class commit :
         if len(line) > 2 :
             self.parent = line[2]
             if len(line) > 3 :
-                self.parents = line[3].split()
+                self.parents = [ self.repo[sha] for sha in line[3].split() ]
                 if len(self.parents) > 1 :
-                    raise Exception( "Octopus merges on %s from %s not handled" % ( self.sha , ", ".join(self.parents) ) )
+                    raise Exception( "Octopus merges on %s from %s not handled" % ( self.sha , ", ".join([c.sha for c in self.parents]) ) )
         self.child = None
         self.forks = []
 
@@ -54,7 +55,7 @@ class commit :
             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( gitgraphjs.js_varname(self.branch) , self.sha , self.message ) )
 
     def __str__ ( self ) :
-        parents = " ".join(self.parents)
+        parents = " ".join([p.sha for p in self.parents])
         forks = " ".join(self.forks)
         if self.parent :
             return "%-20s %s : %s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , self.parent , self.child , parents , forks , self.message )
@@ -99,8 +100,8 @@ class branch ( list ) :
         sources = []
         targets = []
         for c in self :
-            for sha in c.parents :
-                sources.append( self.repo[sha].branch )
+            for parent in c.parents :
+                sources.append( parent.branch )
             for sha in c.forks :
                 targets.append( self.repo[sha].branch )
         return sources , targets
@@ -152,7 +153,7 @@ class repository ( dict ) :
     line = cmd.stdout.readline()
     while line[:-1] :
         sha , author , committer , message = line[:-1].strip('"').split(None, 3)
-        self[sha] = commit( sha , author , committer , message )
+        self[sha] = commit( sha , self , author , committer , message )
         line = cmd.stdout.readline()
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--date-order', '--reverse', '--format="%H %at %ct %P"'] , stdout=subprocess.PIPE )
@@ -219,7 +220,7 @@ class repository ( dict ) :
                   if self.branch(self[sha].branch).begin().parent == branch.end().sha :
                       reutilized += 1
           if branch.end().child and branch.end().parents :
-              if self[branch.end().parents[0]].sha == self[branch.end().child].parent :
+              if branch.end().parents[0].sha == self[branch.end().child].parent :
                   mergeconflict += 1
           source = branch.source()
           target = branch.target()
@@ -310,7 +311,7 @@ class repository ( dict ) :
         else :
           source = merged.group('source').strip("'")
           branches.append( ( commit.parents[0] , source ) )
-          self[commit.parents[0]].set_branch( source )
+          commit.parents[0].set_branch( source )
       else :
         merged = re.search("Merge (branch )?(?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
         if merged :
@@ -319,9 +320,9 @@ class repository ( dict ) :
           else :
             source = merged.group('source').strip("'")
             branches.append( ( commit.parents[0] , source ) )
-            self[commit.parents[0]].set_branch(source)
+            commit.parents[0].set_branch(source)
             target = merged.group('target').strip("'")
-            branches.append( ( commit.parent , target ) )
+            branches.append( ( self[commit.parent] , target ) )
             self[commit.parent].set_branch(target)
         else :
             merged = re.search("Merge remote-tracking branch (?P<source>[^ ]*) into (?P<target>[^ ]*)", commit.message)
@@ -331,30 +332,28 @@ class repository ( dict ) :
                 else :
                     source = merged.group('source').strip("'").replace('origin/', '')
                     branches.append( ( commit.parents[0] , source ) )
-                    self[commit.parents[0]].set_branch(source)
+                    commit.parents[0].set_branch(source)
                     target = merged.group('target').strip("'")
-                    branches.append( ( commit.parent , target ) )
+                    branches.append( ( self[commit.parent] , target ) )
                     self[commit.parent].set_branch(target)
 
     for sha,branch in get_branches() :
-        branches.append( ( sha , branch ) )
+        branches.append( ( self[sha] , branch ) )
         self[sha].set_branch( branch )
 
     n = 0
     for commit in self.values() :
-        for parent in commit.parents :
-            c = self[parent]
+        for c in commit.parents :
             if not c.branch :
                 n += 1
                 newbranch = "branch_%s" % n
-                branches.append( ( c.sha , newbranch ) )
+                branches.append( ( c , newbranch ) )
                 c.set_branch( newbranch )
     if n : print "WARNING : %d removed branch not automatically detected" % n
 
     # All branches detected at this point
 
-    for sha,branch in branches :
-        commit = self[sha]
+    for commit,branch in branches :
         c = self[commit.parent]
         while c :
             if not c.parent : # Initial commit detection
@@ -369,7 +368,7 @@ class repository ( dict ) :
         if c.parent :
             self[c.parent].forks.append( c.sha )
         for parent in c.parents :
-            self[parent].forks.append( c.sha )
+            parent.forks.append( c.sha )
 
     for c in self.values() :
         if len(c.forks) == 1 :
