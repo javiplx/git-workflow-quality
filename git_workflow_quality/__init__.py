@@ -42,11 +42,11 @@ class commit :
                 raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
         self.branch = branch
 
-    def set_child ( self , sha ) :
+    def set_child ( self , commit ) :
         if self.child :
-            raise Exception( "cannot assign %s as child of %s, already parent of %s" % ( sha , self.sha , self.child ) )
-        self.child = sha
-        self.forks.remove(sha)
+            raise Exception( "cannot assign %s as child of %s, already parent of %s" % ( sha , self.sha , self.child.sha ) )
+        self.child = commit
+        self.forks.remove(commit)
 
     def render ( self , fd , merged_commit=None ) :
         if self.parents :
@@ -56,10 +56,10 @@ class commit :
 
     def __str__ ( self ) :
         parents = " ".join([p.sha for p in self.parents])
-        forks = " ".join(self.forks)
+        forks = " ".join([f.sha for f in self.forks])
         if self.parent :
-            return "%-20s %s : %s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , self.parent.sha , self.child , parents , forks , self.message )
-        return "%-20s %s : %40s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , '<None>' , self.child , parents , forks , self.message )
+            return "%-20s %s : %s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , self.parent.sha , self.child.sha , parents , forks , self.message )
+        return "%-20s %s : %40s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , '<None>' , self.child.sha , parents , forks , self.message )
 
 
 class branch ( list ) :
@@ -94,7 +94,7 @@ class branch ( list ) :
         target = self.end().child
         if not target :
             return '<Final>'
-        return self.repo[target].branch
+        return target.branch
 
     def relations ( self ) :
         sources = []
@@ -102,8 +102,8 @@ class branch ( list ) :
         for c in self :
             for parent in c.parents :
                 sources.append( parent.branch )
-            for sha in c.forks :
-                targets.append( self.repo[sha].branch )
+            for child in c.forks :
+                targets.append( child.branch )
         return sources , targets
 
     def report ( self , branches=False ) :
@@ -183,15 +183,15 @@ class repository ( dict ) :
           if not commit.forks or not commit.child or commit.branch in self.primary :
               continue
           merges = []
-          if self[commit.child].parents :
-              if self[commit.child].parent != commit :
-                  if self[commit.child].branch == commit.branch :
+          if commit.child.parents :
+              if commit.child.parent != commit :
+                  if commit.child.branch == commit.branch :
                       # This is an auto-merge and should be detected somewhere
                       pass
                   else :
                       merges.append( commit.child )
-          for sha in [sha for sha in commit.forks if self[sha].parents and self[sha].parent != commit ] :
-                  if self[sha].branch == commit.branch :
+          for F in [f for f in commit.forks if f.parents and f.parent != commit ] :
+                  if F.branch == commit.branch :
                       # This is an auto-merge and should be detected somewhere
                       pass
                   else :
@@ -216,11 +216,11 @@ class repository ( dict ) :
           if branch.name in self.primary or str(branch.name).startswith('release') :
               continue
           if branch.end().child and branch.end().forks :
-              for sha in branch.end().forks :
-                  if self.branch(self[sha].branch).begin().parent == branch.end() :
+              for child in branch.end().forks :
+                  if self.branch(child.branch).begin().parent == branch.end() :
                       reutilized += 1
           if branch.end().child and branch.end().parents :
-              if branch.end().parents[0] == self[branch.end().child].parent :
+              if branch.end().parents[0] == branch.end().child.parent :
                   mergeconflict += 1
           source = branch.source()
           target = branch.target()
@@ -366,19 +366,19 @@ class repository ( dict ) :
 
     for c in self.values() :
         if c.parent :
-            c.parent.forks.append( c.sha )
+            c.parent.forks.append( c )
         for parent in c.parents :
-            parent.forks.append( c.sha )
+            parent.forks.append( c )
 
     for c in self.values() :
         if len(c.forks) == 1 :
             c.set_child( c.forks[0] )
         elif len(c.forks) > 1 :
-            child = [ sha for sha in c.forks if self[sha].branch == c.branch ]
+            child = [ f for f in c.forks if f.branch == c.branch ]
             if child :
                  c.set_child( child[0] )
             else :
-                 c.set_child( sorted([ self[sha] for sha in c.forks ], key=lambda x : x.committer_date)[0].sha )
+                 c.set_child( sorted(c.forks, key=lambda x : x.committer_date)[0] )
 
   def set_branches ( self ) :
 
