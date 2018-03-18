@@ -10,7 +10,7 @@ setup(
     author_email = 'javiplx@gmail.com',
     license = 'GPLv2',
     url = 'http://github.com/javiplx/git-workflow-quality',
-    scripts = [ 'git-workflow-quality' ],
+    scripts = [ 'gwfqa' ],
     packages = [ 'git_workflow_quality' ]
     )
 
