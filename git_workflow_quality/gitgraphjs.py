@@ -4,12 +4,13 @@ import sys
 
 class nullable_list ( list ) :
 
-    def append ( self , item ) :
+    def append ( self , item , fd , parent=None ) :
         if None in self :
             idx = self.index(None)
             self[idx] = item
         else :
             list.append( self , item )
+        item.render( fd , parent , self )
 
     def remove ( self , item ) :
         idx = self.index(item)
@@ -87,8 +88,7 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
 
     for origin in origins :
         # FIXME: multiple origins could be owned by the same branch ?
-        shown_branches.append( origin.branch )
-        origin.branch.render( fd )
+        shown_branches.append( origin.branch , fd )
 
     if mode == 'date' :
         chrono_plot(repo, fd)
@@ -105,7 +105,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     first = True
     current_branch = c.branch
     while c.child :
-        end_of_branch = c.child.branch != current_branch
+        end_of_branch = len([ C for C in c.get_childs() if C.branch == current_branch ]) == 0
         if c.parents :
             if [ p for p in c.get_parents() if not p.rendered ] :
                 pending.append(c)
@@ -117,7 +117,6 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 first = False
                 c.render(fd)
             elif c.forks :
-                first = True
                 c.render(fd)
             elif c.child and c.child.parents :
                 c.render(fd)
@@ -130,27 +129,29 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
           if target in pending :
               break_it = True
           else :
-            if not target.parents :
-                target.branch.render( fd , current_branch , shown_branches )
-                shown_branches.append( target.branch )
+            if target.branch and target.branch not in shown_branches :
+                shown_branches.append( target.branch , fd , current_branch )
                 pending.append( target )
             else :
                   # We just assume that target will appear on pending in the future
                   break_it = True
+        if end_of_branch :
+            shown_branches.remove( current_branch )
+            for c in c.get_childs() :
+              if c.branch :
+                if c.branch not in shown_branches :
+                  shown_branches.append( c.branch , fd , current_branch )
+                else :
+                    pending.remove(c)
+                forward_plot(repo, c, pending, fd)
+            break
         c = c.child
         if break_it :
-            if c and c not in pending :
+            if c :
+              if c not in pending :
                 pending.append( c )
-            break
-        if end_of_branch :
-            if c in pending :
-                pending.remove(c)
-            if c.branch :
-                if c.branch not in shown_branches :
-                    c.branch.render( fd , current_branch , shown_branches )
-                    shown_branches.append( c.branch )
-                shown_branches.remove( current_branch )
-                forward_plot(repo, c, pending, fd)
+              else :
+                  forward_plot(repo, c, pending, fd)
             break
     else :
         if c.parents :
@@ -168,8 +169,7 @@ def chrono_plot ( repo , fd=sys.stdout) :
       if c.branch :
         if not c.branch in shown_branches :
             first = True
-            shown_branches.append( c.branch )
-            c.branch.render( fd , c.parent.branch , shown_branches )
+            shown_branches.append( c.branch , fd , c.parent.branch )
         if not c.parents :
             if first or c.forks or not c.child :
                 first = False

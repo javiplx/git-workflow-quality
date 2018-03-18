@@ -152,7 +152,7 @@ class Branch ( list ) :
         if self.is_primary() :
             column = Branch.primary.index(self.name)
         else :
-            column = len(shown_branches)
+            column = shown_branches.index(self)
         json = 'name:"%s", column:%d' % ( self , column )
         if parent :
             fd.write( 'var %s = %s.branch({%s});\n' % ( self.as_var() , parent.as_var() , json ) )
