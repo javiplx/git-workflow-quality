@@ -125,12 +125,23 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 c.render(fd)
             else :
                 c.rendered = True
+        break_it = False
         for target in c.forks :
-            if target.branch :
+          if target in pending :
+              break_it = True
+          else :
+            if not target.parents :
                 target.branch.render( fd , current_branch , shown_branches )
                 shown_branches.append( target.branch )
                 pending.append( target )
+            else :
+                  # We just assume that target will appear on pending in the future
+                  break_it = True
         c = c.child
+        if break_it :
+            if c and c not in pending :
+                pending.append( c )
+            break
         if end_of_branch :
             if c in pending :
                 pending.remove(c)
@@ -142,7 +153,13 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 forward_plot(repo, c, pending, fd)
             break
     else :
-        c.render(fd)
+        if c.parents :
+            if [ p for p in c.get_parents() if not p.rendered ] :
+                pending.append(c)
+            else :
+                c.render( fd , c.parents[0] )
+        else :
+            c.render(fd)
 
 def chrono_plot ( repo , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
