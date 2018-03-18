@@ -24,7 +24,8 @@ class Commit :
             # self.branch has a higher weight respect to branch
             return
         if self.branch and not branch.is_primary() :
-            raise Exception( "cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch ) )
+            print "WARNING : cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch )
+            return
         branch.append( self )
 
     def set_child ( self , commit ) :
@@ -129,7 +130,7 @@ class Branch ( list ) :
         return tuple(output)
 
     def as_var ( self ) :
-        return "branch_" + self.name.replace(' (?)','').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
+        return "branch_" + self.name.replace(' (2)','_duplicated').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
 
     def render ( self , fd , parent=None , shown_branches=None ) :
         if self.is_primary() :
@@ -205,8 +206,11 @@ class Repository ( dict ) :
               if len(self[sha].parents) > 1 :
                   raise Exception( "Octopus merges on %s from %s not handled" % ( self[sha].sha , ", ".join([c.sha for c in self[sha].parents]) ) )
 
-  def branch ( self , branchname ) :
-      if not self.branches.has_key( branchname ) :
+  def new_branch ( self , branchname ) :
+      if self.branches.has_key( branchname ) :
+          if not self.branches[branchname].is_primary() :
+              return self.new_branch( "%s (2)" % branchname )
+      else :
           self.branches[branchname] = Branch(branchname)
       return self.branches[branchname]
 
@@ -292,6 +296,13 @@ class Repository ( dict ) :
       output.append( "Commits with no branch: %s" % len([c for c in self.values() if not c.branch]) )
       output.append( "Unlabelled heads:       %s" % len([c for c in self.values() if not c.branch and not c.child]) )
 
+      empty = [ self.branches.pop(b.name) for b in self.branches.values() if len(b) == 0 ]
+      if empty :
+          output.append( "" )
+          output.append( "Branches without commits (%s)" % len(empty) )
+          for branchname in empty :
+              output.append( " * %s" % branchname )
+
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
       output.append( "%-25s %8s   %7s" % ( 'PRIMARY' , '#commits' , '#merges' ) )
@@ -314,7 +325,7 @@ class Repository ( dict ) :
               output.append( "     -----" )
               for release in releases :
                   output.append( report_fmt % release.report(True) )
-                  commits = self.branch(release)
+                  commits = self.branches[release]
                   if [c for c in commits if not c.parents] :
                       output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
 
@@ -346,7 +357,7 @@ class Repository ( dict ) :
         if not commit.parents :
           print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
         else :
-          source = self.branch(merged.group('source').strip("'"))
+          source = self.new_branch(merged.group('source').strip("'"))
           branches.append( ( commit.parents[0] , source ) )
           commit.parents[0].set_branch( source )
       else :
@@ -355,10 +366,10 @@ class Repository ( dict ) :
           if not commit.parents :
             print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
           else :
-            source = self.branch(merged.group('source').strip("'"))
+            source = self.new_branch(merged.group('source').strip("'"))
             branches.append( ( commit.parents[0] , source ) )
             commit.parents[0].set_branch(source)
-            target = self.branch(merged.group('target').strip("'"))
+            target = self.new_branch(merged.group('target').strip("'"))
             branches.append( ( commit.parent , target ) )
             commit.parent.set_branch(target)
         else :
@@ -367,15 +378,15 @@ class Repository ( dict ) :
                 if not commit.parents :
                     print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
                 else :
-                    source = self.branch(merged.group('source').strip("'").replace('origin/', ''))
+                    source = self.new_branch(merged.group('source').strip("'").replace('origin/', ''))
                     branches.append( ( commit.parents[0] , source ) )
                     commit.parents[0].set_branch(source)
-                    target = self.branch(merged.group('target').strip("'"))
+                    target = self.new_branch(merged.group('target').strip("'"))
                     branches.append( ( commit.parent , target ) )
                     commit.parent.set_branch(target)
 
     for sha,branchname in get_branches() :
-        branch = self.branch(branchname)
+        branch = self.new_branch(branchname)
         branches.append( ( self[sha] , branch ) )
         self[sha].set_branch( branch )
 
@@ -384,7 +395,7 @@ class Repository ( dict ) :
         for c in commit.parents :
             if not c.branch :
                 n += 1
-                newbranch = self.branch("branch_%s" % n)
+                newbranch = self.new_branch("branch_%s" % n)
                 branches.append( ( c , newbranch ) )
                 c.set_branch( newbranch )
     if n : print "WARNING : %d removed branch not automatically detected" % n
