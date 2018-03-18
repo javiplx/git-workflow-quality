@@ -4,9 +4,11 @@ import sys
 
 class nullable_list ( list ) :
 
+    reserved = 0
+
     def append ( self , item , fd , parent=None ) :
-        if None in self :
-            idx = self.index(None)
+        if None in self[self.reserved:] :
+            idx = self.reserved + self[self.reserved:].index(None)
             self[idx] = item
         else :
             list.append( self , item )
@@ -89,6 +91,7 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
     for origin in origins :
         # FIXME: multiple origins could be owned by the same branch ?
         shown_branches.append( origin.branch , fd )
+    shown_branches.reserved = len([b for b in repo.branches.values() if b.is_primary()])
 
     if mode == 'date' :
         chrono_plot(repo, fd)
