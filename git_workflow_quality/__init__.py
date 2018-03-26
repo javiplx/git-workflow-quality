@@ -60,16 +60,16 @@ class Branch ( list ) :
         list.__init__( self )
 
     def commits ( self ) :
-        return [c for c in self if not c.parents]
+        return [c for c in list.__iter__(self) if not c.parents]
 
     def merges ( self ) :
-        return [c for c in self if c.parents]
+        return [c for c in list.__iter__(self) if c.parents]
 
     def stats ( self ) :
         return len(self), len(self.commits()), len(self.merges())
 
     def begin ( self ) :
-        begins = [ c for c in self if not c.parent or c.parent.branch != self ]
+        begins = [ c for c in list.__iter__(self) if not c.parent or c.parent.branch != self ]
         assert len(begins) == 1
         return begins[0]
 
@@ -119,6 +119,13 @@ class Branch ( list ) :
             commit.branch.remove( commit )
         list.append( self , commit )
         commit.branch = self
+
+    def commit_list ( self ) :
+        this = self.begin()
+        while this.child and this.child.branch == self :
+            yield this
+            this = this.child
+        raise StopIteration()
 
     def __str__ ( self ) :
         return self.name
