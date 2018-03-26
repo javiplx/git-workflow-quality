@@ -186,7 +186,7 @@ class Repository ( dict ) :
   def __init__ ( self ) :
 
     self.order = []
-    self.branches = {}
+    self.branches = []
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H %ae %ce %s"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -218,12 +218,13 @@ class Repository ( dict ) :
                   raise Exception( "Octopus merges on %s from %s not handled" % ( self[sha].sha , ", ".join([c.sha for c in self[sha].parents]) ) )
 
   def new_branch ( self , branchname ) :
-      if self.branches.has_key( branchname ) :
-          if not self.branches[branchname].is_primary() :
-              return self.new_branch( "%s (2)" % branchname )
+      match = [ branch for branch in self.branches if branch.name == branchname and not branch.is_primary() ]
+      if match :
+          assert len(match) == 1
+          return self.new_branch( "%s (2)" % branchname )
       else :
-          self.branches[branchname] = Branch(branchname)
-      return self.branches[branchname]
+          self.branches.append( Branch(branchname) )
+          return self.branches[-1]
 
   def events( self ) :
       output = ['']
@@ -264,7 +265,7 @@ class Repository ( dict ) :
       indirect = 0
       multisource = 0
       mergeconflict = 0
-      for branch in self.branches.values() :
+      for branch in self.branches :
           if branch.is_primary() or branch.is_release() :
               continue
           if branch.end().child and branch.end().forks :
@@ -300,27 +301,28 @@ class Repository ( dict ) :
   def report( self , details=False) :
       output = ['']
       output.append( "Number of commits:      %s" % len(self) )
-      output.append( "Number of branches:     %s" % ( len(self.branches) - len([b for b in self.branches.values() if b.is_primary()]) ) )
+      output.append( "Number of branches:     %s" % ( len(self.branches) - len([b for b in self.branches if b.is_primary()]) ) )
       output.append( "# initial commits:      %s" % len([c for c in self.values() if not c.parent ]) )
       output.append( "Number of merges:       %s" % len([c for c in self.values() if c.parents]) )
       output.append( "Ammended commits:       %s" % len([c for c in self.values() if c.author != c.committer and not c.parents]) )
       output.append( "Commits with no branch: %s" % len([c for c in self.values() if not c.branch]) )
       output.append( "Unlabelled heads:       %s" % len([c for c in self.values() if not c.branch and not c.child]) )
 
-      empty = [ self.branches.pop(b.name) for b in self.branches.values() if len(b) == 0 ]
+      empty = [ branch for branch in self.branches if len(branch) == 0 ]
       if empty :
           output.append( "" )
           output.append( "Branches without commits (%s)" % len(empty) )
-          for branchname in empty :
-              output.append( " * %s" % branchname )
+          for branch in empty :
+              self.branches.remove( branch )
+              output.append( " * %s" % branch )
 
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
       output.append( "%-25s %8s   %7s" % ( 'PRIMARY' , '#commits' , '#merges' ) )
-      for branch in [ b for b in self.branches.values() if b.is_primary() ] :
+      for branch in [ b for b in self.branches if b.is_primary() ] :
           output.append( report_fmt % branch.report(True) )
 
-      releases = [ b for b in self.branches.values() if b.is_release() ]
+      releases = [ b for b in self.branches if b.is_release() ]
       if releases :
           output.append( "" )
           output.append( "%-10s %8s   %7s    (%d branches)" % ( 'RELEASE' , '#commits' , '#merges' , len(releases) ) )
@@ -340,7 +342,7 @@ class Repository ( dict ) :
                   if [c for c in commits if not c.parents] :
                       output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
 
-      branches = [ b for b in self.branches.values() if not b.is_primary() and not b.is_release() ]
+      branches = [ b for b in self.branches if not b.is_primary() and not b.is_release() ]
       if branches :
           output.append( "" )
           output.append( "%-10s %8s   %7s   (%d branches)" % ( 'TOPIC' , '#commits' , '#merges' , len(branches) ) )
