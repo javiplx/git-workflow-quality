@@ -365,21 +365,23 @@ class Repository ( dict ) :
     for commit in self.values() :
       merged = re.search("Merge pull request #(?P<id>[0-9]*) from (?P<repo>[^/]*)/(?P<source>.*)", commit.message )
       if merged :
-        if not commit.parents :
-          print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
-        else :
-          source = self.new_branch(merged.group('source').strip("'"))
-          branches.append( ( commit.parents[0] , source ) )
-          commit.parents[0].set_branch( source )
+         if not commit.parents :
+           print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
+         else :
+           if not [ b for (c,b) in branches if c == commit.parents[0] ] :
+             source = self.new_branch(merged.group('source').strip("'"))
+             branches.append( ( commit.parents[0] , source ) )
+             commit.parents[0].set_branch( source )
       else :
         merged = re.search("Merge (branch )?(?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
         if merged :
           if not commit.parents :
             print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
           else :
-            source = self.new_branch(merged.group('source').strip("'"))
-            branches.append( ( commit.parents[0] , source ) )
-            commit.parents[0].set_branch(source)
+            if not [ b for (c,b) in branches if c == commit.parents[0] ] :
+              source = self.new_branch(merged.group('source').strip("'"))
+              branches.append( ( commit.parents[0] , source ) )
+              commit.parents[0].set_branch(source)
             target = self.new_branch(merged.group('target').strip("'"))
             branches.append( ( commit.parent , target ) )
             commit.parent.set_branch(target)
@@ -389,14 +391,16 @@ class Repository ( dict ) :
                 if not commit.parents :
                     print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
                 else :
-                    source = self.new_branch(merged.group('source').strip("'").replace('origin/', ''))
-                    branches.append( ( commit.parents[0] , source ) )
-                    commit.parents[0].set_branch(source)
+                    if not [ b for (c,b) in branches if c == commit.parents[0] ] :
+                      source = self.new_branch(merged.group('source').strip("'").replace('origin/', ''))
+                      branches.append( ( commit.parents[0] , source ) )
+                      commit.parents[0].set_branch(source)
                     target = self.new_branch(merged.group('target').strip("'"))
                     branches.append( ( commit.parent , target ) )
                     commit.parent.set_branch(target)
 
     for sha,branchname in get_branches() :
+      if not [ b for (c,b) in branches if c == self[sha] ] :
         branch = self.new_branch(branchname)
         branches.append( ( self[sha] , branch ) )
         self[sha].set_branch( branch )
