@@ -103,6 +103,13 @@ class Branch ( list ) :
             return True
         return False
 
+    def ancestry ( self , commit ) :
+        while commit :
+            if commit.branch and not self.is_primary() :
+                break
+            commit.set_branch( self )
+            commit = commit.parent
+
     def append ( self , commit ) :
         if commit.branch :
             commit.branch.remove( commit )
@@ -403,15 +410,7 @@ class Repository ( dict ) :
     # All branches detected at this point
 
     for c,branch in branches :
-        c = c.parent
-        while c :
-            if not c.parent : # Initial commit detection
-                c.set_branch( branch )
-                break
-            if c.branch and not branch.is_primary() :
-                break
-            c.set_branch(branch)
-            c = c.parent
+        branch.ancestry( c.parent )
 
     for branch in self.branches.values() :
         branch.sort()
