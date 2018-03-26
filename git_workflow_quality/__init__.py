@@ -69,14 +69,18 @@ class Branch ( list ) :
         return len(self), len(self.commits()), len(self.merges())
 
     def begin ( self ) :
-        return self[0]
+        begins = [ c for c in self if not c.parent or c.parent.branch != self ]
+        assert len(begins) == 1
+        return begins[0]
 
     def end ( self ) :
-        return self[-1]
+        ends = [ c for c in list.__iter__(self) if not c.child or c.child.branch != self ]
+        assert len(ends) == 1
+        return ends[0]
 
     def source ( self ) :
         source = self.begin().parent
-        if not source :
+        if not source or not source.branch :
             return '<Initial>'
         return source.branch.name
 
@@ -265,7 +269,7 @@ class Repository ( dict ) :
               continue
           if branch.end().child and branch.end().forks :
               for child in branch.end().forks :
-                if child.branch and child.branch.begin() :
+                if child.branch and child.branch.begin() and child.branch.begin().parent :
                   if child.branch.begin().parent == branch.end() :
                       reutilized += 1
           if branch.end().child and branch.end().parents :
@@ -411,9 +415,6 @@ class Repository ( dict ) :
 
     for c,branch in branches :
         branch.ancestry( c.parent )
-
-    for branch in self.branches.values() :
-        branch.sort()
 
     for c in self.values() :
         if c.parent :
