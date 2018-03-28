@@ -19,7 +19,7 @@ class Commit :
         self.child = None
         self.forks = []
 
-    def set_branch ( self , branch ) :
+    def set_branch ( self , branch , parent=None ) :
         if branch < self.branch :
             # self.branch has a higher weight respect to branch
             return
@@ -27,12 +27,13 @@ class Commit :
             print "WARNING : cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch )
             return
         branch.append( self )
+        if parent :
+            self.set_child( parent )
 
     def set_child ( self , commit ) :
-        if self.child :
-            raise Exception( "cannot assign %s as child of %s, already parent of %s" % ( sha , self.sha , self.child.sha ) )
+        if self.child and self.child != commit :
+            self.forks.append( self.child )
         self.child = commit
-        self.forks.remove(commit)
 
     def render ( self , fd , merged_commit=None ) :
         if self.parents :
@@ -108,10 +109,17 @@ class Branch ( list ) :
         return False
 
     def ancestry ( self , commit ) :
+        parent = commit
+        commit = commit.parent
         while commit :
             if commit.branch and not self.is_primary() :
+                if commit.child and commit.child != parent :
+                    commit.forks.append( parent )
+                else :
+                    commit.child = parent
                 break
-            commit.set_branch( self )
+            commit.set_branch( self , parent )
+            parent = commit
             commit = commit.parent
 
     def append ( self , commit ) :
@@ -380,7 +388,7 @@ class Repository ( dict ) :
            if not [ b for (c,b) in branches if c == commit.parents[0] ] :
              source = self.new_branch(merged.group('source').strip("'"))
              branches.append( ( commit.parents[0] , source ) )
-             commit.parents[0].set_branch( source )
+             commit.parents[0].set_branch( source , commit )
       else :
         merged = re.search("Merge (branch )?(?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
         if merged :
@@ -390,10 +398,10 @@ class Repository ( dict ) :
             if not [ b for (c,b) in branches if c == commit.parents[0] ] :
               source = self.new_branch(merged.group('source').strip("'"))
               branches.append( ( commit.parents[0] , source ) )
-              commit.parents[0].set_branch(source)
+              commit.parents[0].set_branch(source, commit)
             target = self.new_branch(merged.group('target').strip("'"))
             branches.append( ( commit.parent , target ) )
-            commit.parent.set_branch(target)
+            commit.parent.set_branch(target, commit)
         else :
             merged = re.search("Merge remote-tracking branch (?P<source>[^ ]*) into (?P<target>[^ ]*)", commit.message)
             if merged :
@@ -403,10 +411,10 @@ class Repository ( dict ) :
                     if not [ b for (c,b) in branches if c == commit.parents[0] ] :
                       source = self.new_branch(merged.group('source').strip("'").replace('origin/', ''))
                       branches.append( ( commit.parents[0] , source ) )
-                      commit.parents[0].set_branch(source)
+                      commit.parents[0].set_branch(source, commit)
                     target = self.new_branch(merged.group('target').strip("'"))
                     branches.append( ( commit.parent , target ) )
-                    commit.parent.set_branch(target)
+                    commit.parent.set_branch(target, commit)
 
     for sha,branchname in get_branches() :
       if not [ b for (c,b) in branches if c == self[sha] ] :
@@ -427,21 +435,5 @@ class Repository ( dict ) :
     # All branches detected at this point
 
     for c,branch in branches :
-        branch.ancestry( c.parent )
-
-    for c in self.values() :
-        if c.parent :
-            c.parent.forks.append( c )
-        for parent in c.parents :
-            parent.forks.append( c )
-
-    for c in self.values() :
-        if len(c.forks) == 1 :
-            c.set_child( c.forks[0] )
-        elif len(c.forks) > 1 :
-            child = [ f for f in c.forks if f.branch == c.branch ]
-            if child :
-                 c.set_child( child[0] )
-            else :
-                 c.set_child( sorted(c.forks, key=lambda x : x.committer_date)[0] )
+        branch.ancestry( c )
 
