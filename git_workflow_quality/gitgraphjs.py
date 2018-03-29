@@ -170,9 +170,6 @@ def chrono_plot ( repo , fd=sys.stdout) :
     first = True
     for c in repo.order :
       if c.branch :
-        if not c.branch in shown_branches :
-            first = True
-            shown_branches.append( c.branch , fd , c.parent.branch )
         if not c.parents :
             if first or c.forks or not c.child :
                 first = False
@@ -180,13 +177,19 @@ def chrono_plot ( repo , fd=sys.stdout) :
             elif c.child and c.child.parents :
                 first = True
                 c.render(fd)
+            if c.child and c.branch != c.child.branch and c.child.branch not in shown_branches :
+                first = True
+                shown_branches.append( c.child.branch , fd , c.branch )
         else :
             first = True
             c.render(fd, c.parents[0])
-            if not c.parents[0].child :
-                if c.parents[0].branch in shown_branches :
-                    shown_branches.remove( c.parents[0].branch )
-        if c.child and c.branch != c.child.branch :
-            shown_branches.remove(c.branch)
+            # Remove branches merged into
+            for p in c.parents :
+                if p.branch in shown_branches :
+                    shown_branches.remove( p.branch )
+        for f in c.forks :
+            if not f.branch in shown_branches :
+                first = True
+                shown_branches.append( f.branch , fd , c.branch )
 
 
