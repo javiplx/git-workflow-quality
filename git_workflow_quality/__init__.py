@@ -45,10 +45,11 @@ class Commit :
 
     def __str__ ( self ) :
         parents = " ".join([p.sha for p in self.parents])
+        child =  self.child and self.child.sha or '<None>'
         forks = " ".join([f.sha for f in self.forks])
         if self.parent :
-            return "%-20s %s : %s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , self.parent.sha , self.child.sha , parents , forks , self.message )
-        return "%-20s %s : %40s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , '<None>' , self.child.sha , parents , forks , self.message )
+            return "%-20s %s : %s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , self.parent.sha , child , parents , forks , self.message )
+        return "%-20s %s : %40s/%s %s | %s :: %s" % ( str(self.branch)[:20] , self.sha , '<None>' , child , parents , forks , self.message )
 
 
 class Branch ( list ) :
