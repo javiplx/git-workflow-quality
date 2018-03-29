@@ -40,9 +40,6 @@ class Commit :
         else :
             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( self.branch.as_var() , self.sha , self.message ) )
 
-    def __cmp__ ( self , other ) :
-        return self.committer_date.__cmp__( other.committer_date )
-
     def __str__ ( self ) :
         parents = " ".join([p.sha for p in self.parents])
         child =  self.child and self.child.sha or '<None>'
