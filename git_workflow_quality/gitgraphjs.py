@@ -152,12 +152,12 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 forward_plot(repo, c, pending, fd)
             break
         c = c.child
-        if break_it :
-            if c :
-              if c not in pending :
+        if break_it and c :
+            if c not in pending :
                 pending.append( c )
-              else :
-                  forward_plot(repo, c, pending, fd)
+            else :
+                pending.remove( c )
+                forward_plot(repo, c, pending, fd)
             break
     else :
         if c.parents :
