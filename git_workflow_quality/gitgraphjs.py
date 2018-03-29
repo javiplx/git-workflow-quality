@@ -131,8 +131,8 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
         for target in c.forks :
           if target in pending :
               break_it = True
-          else :
-            if target.branch and target.branch not in shown_branches :
+          elif target.branch :
+            if target.branch not in shown_branches :
                 shown_branches.append( target.branch , fd , current_branch )
                 pending.append( target )
             else :
@@ -144,8 +144,11 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
               if c.branch :
                 if c.branch not in shown_branches :
                   shown_branches.append( c.branch , fd , current_branch )
-                else :
+                elif c in pending :
                     pending.remove(c)
+                else :
+                  # We just assume that target will appear on pending in the future
+                  break
                 forward_plot(repo, c, pending, fd)
             break
         c = c.child
@@ -177,7 +180,7 @@ def chrono_plot ( repo , fd=sys.stdout) :
             elif c.child and c.child.parents :
                 first = True
                 c.render(fd)
-            if c.child and c.branch != c.child.branch and c.child.branch not in shown_branches :
+            if c.child and c.child.branch and c.branch != c.child.branch and c.child.branch not in shown_branches :
                 first = True
                 shown_branches.append( c.child.branch , fd , c.branch )
         else :
@@ -186,9 +189,11 @@ def chrono_plot ( repo , fd=sys.stdout) :
             # Remove branches merged into
             for p in c.parents :
                 if p.branch in shown_branches :
+                  # The condition below is an ugly hack for some back & forth merge scenarios
+                  if not p.branch.is_primary() :
                     shown_branches.remove( p.branch )
         for f in c.forks :
-            if not f.branch in shown_branches :
+            if f.branch and f.branch not in shown_branches :
                 first = True
                 shown_branches.append( f.branch , fd , c.branch )
 
