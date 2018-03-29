@@ -181,6 +181,7 @@ def chrono_plot ( repo , fd=sys.stdout) :
                 first = True
                 c.render(fd)
             if c.child and c.child.branch and c.branch != c.child.branch and c.child.branch not in shown_branches :
+              if c.child.parent == c :
                 first = True
                 shown_branches.append( c.child.branch , fd , c.branch )
         else :
