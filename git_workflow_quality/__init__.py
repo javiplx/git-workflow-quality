@@ -386,6 +386,8 @@ class Repository ( dict ) :
              source = self.new_branch(merged.group('source').strip("'"))
              branches.append( ( commit.parents[0] , source ) )
              commit.parents[0].set_branch( source , commit )
+           else :
+             commit.parents[0].forks.append( commit )
       else :
         merged = re.search("Merge (branch )?(?P<source>[^ ]*) (of [^ ]* )?into (?P<target>[^ ]*)", commit.message)
         if merged :
@@ -396,6 +398,8 @@ class Repository ( dict ) :
               source = self.new_branch(merged.group('source').strip("'"))
               branches.append( ( commit.parents[0] , source ) )
               commit.parents[0].set_branch(source, commit)
+            else :
+              commit.parents[0].forks.append( commit )
             target = self.new_branch(merged.group('target').strip("'"))
             branches.append( ( commit.parent , target ) )
             commit.parent.set_branch(target, commit)
@@ -409,6 +413,8 @@ class Repository ( dict ) :
                       source = self.new_branch(merged.group('source').strip("'").replace('origin/', ''))
                       branches.append( ( commit.parents[0] , source ) )
                       commit.parents[0].set_branch(source, commit)
+                    else :
+                      commit.parents[0].forks.append( commit )
                     target = self.new_branch(merged.group('target').strip("'"))
                     branches.append( ( commit.parent , target ) )
                     commit.parent.set_branch(target, commit)
@@ -427,6 +433,8 @@ class Repository ( dict ) :
                 newbranch = self.new_branch("branch_%s" % n)
                 branches.append( ( c , newbranch ) )
                 c.set_branch( newbranch )
+            elif c.child != commit and commit not in c.forks :
+                c.forks.append( commit )
     if n : print "WARNING : %d removed branch not automatically detected" % n
 
     # All branches detected at this point
