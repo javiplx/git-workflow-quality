@@ -147,6 +147,17 @@ class Branch ( list ) :
                 targets.append( child.branch )
         return sources , targets
 
+    def digraph ( self ) :
+        if self.source() != '<Initial>' :
+            print "%s -> %s;" % ( self.begin().parent.branch.as_var() , self.as_var() )
+        sources , targets = self.relations()
+        for source in sources :
+            print "%s -> %s;" % ( source.as_var() , self.as_var() )
+        for target in targets :
+            print "%s -> %s;" % ( self.as_var() , target.as_var() )
+        if self.target() != '<Final>' :
+            print "%s -> %s;" % ( self.as_var() , self.end().child.branch.as_var() )
+
     def report ( self , branches=False ) :
         output = [ self.name[:25] , len(self.commits()) , len(self.merges()) ]
         if branches :
