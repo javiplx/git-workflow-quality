@@ -131,6 +131,7 @@ class Branch ( list ) :
         while this.child and this.child.branch == self :
             yield this
             this = this.child
+        yield this
         raise StopIteration()
 
     def __str__ ( self ) :
