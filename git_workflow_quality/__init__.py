@@ -432,7 +432,7 @@ class Repository ( dict ) :
                 n += 1
                 newbranch = self.new_branch("branch_%s" % n)
                 branches.append( ( c , newbranch ) )
-                c.set_branch( newbranch )
+                c.set_branch( newbranch , commit )
             elif c.child != commit and commit not in c.forks :
                 c.forks.append( commit )
     if n : print "WARNING : %d removed branch not automatically detected" % n
