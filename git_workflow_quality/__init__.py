@@ -400,6 +400,15 @@ class Repository ( dict ) :
                     target = self.new_branch(merged.group('target').strip("'"))
                     branches.append( ( commit.parent , target ) )
                     commit.parent.set_branch(target)
+            else :
+              merged = re.search("Merge (branch )?(?P<source>[^ ]*)", commit.message)
+              if merged :
+                 if not commit.parents :
+                     print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
+                 else :
+                     source = self.new_branch(merged.group('source').strip("'"))
+                     branches.append( ( commit.parents[0] , source ) )
+                     commit.parents[0].set_branch( source )
 
     for sha,branchname in get_branches() :
         branch = self.new_branch(branchname)
