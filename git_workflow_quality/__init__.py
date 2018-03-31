@@ -20,7 +20,7 @@ class Commit :
         self.forks = []
 
     def set_branch ( self , branch , parent=None ) :
-        if branch < self.branch :
+        if branch <= self.branch :
             # self.branch has a higher weight respect to branch
             return
         if self.branch and not branch.is_primary() :
@@ -33,6 +33,8 @@ class Commit :
     def set_child ( self , commit ) :
         if self.child and self.child != commit :
             self.forks.append( self.child )
+            if commit in self.forks :
+                self.forks.remove( commit )
         self.child = commit
 
     def render ( self , fd , merged_commit=None ) :
@@ -95,11 +97,11 @@ class Branch ( list ) :
     def is_release ( self ) :
         return self.name.startswith('release')
 
-    def __lt__ ( self , other ) :
+    def __le__ ( self , other ) :
         if not other :
             return False
         if self == other :
-            return True
+            return False
         if self.is_primary() and other.is_primary() :
             return Branch.primary.index(other.name) < Branch.primary.index(self.name)
         if other.is_primary() :
