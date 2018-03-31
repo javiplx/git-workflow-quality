@@ -142,9 +142,9 @@ class Branch ( list ) :
         targets = []
         for c in self :
             for parent in c.parents :
-                sources.append( parent.branch )
+                sources.append( parent )
             for child in c.forks :
-                targets.append( child.branch )
+                targets.append( child )
         return sources , targets
 
     def dotlabel ( self , fd=os.sys.stdout ) :
@@ -154,10 +154,12 @@ class Branch ( list ) :
         if self.source() != '<Initial>' :
             fd.write( "  %s -> %s;\n" % ( self.begin().parent.branch.as_var() , self.as_var() ) )
         sources , targets = self.relations()
-        for source in sources :
-            fd.write( "  %s -> %s;\n" % ( source.as_var() , self.as_var() ) )
-        for target in targets :
-            fd.write( "  %s -> %s;\n" % ( self.as_var() , target.as_var() ) )
+        for parent in sources :
+          if parent.branch and parent != parent.branch.end() :
+            fd.write( "  %s -> %s;\n" % ( parent.branch.as_var() , self.as_var() ) )
+        for child in targets :
+          if child.branch and child != child.branch.begin() :
+            fd.write( "  %s -> %s;\n" % ( self.as_var() , child.branch.as_var() ) )
         if self.target() != '<Final>' :
             fd.write( "  %s -> %s;\n" % ( self.as_var() , self.end().child.branch.as_var() ) )
 
@@ -309,11 +311,11 @@ class Repository ( dict ) :
           sources , targets = branch.relations()
           if targets :
               multitarget += 1
-          if source in sources :
+          if source in [c.branch for c in sources] :
               multimerged += 1
           if source != target and branch.end().child :
               indirect += 1
-          if [ branchname for branchname in sources if branchname != source ] :
+          if [ branch for commit in sources if commit.branch != source ] :
               multisource += 1
       output.append( "Branch events" )
       output.append( "  multitarget   %4d" % multitarget )
