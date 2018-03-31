@@ -248,9 +248,11 @@ class Repository ( dict ) :
                   raise Exception( "Octopus merges on %s from %s not handled" % ( self[sha].sha , ", ".join([c.sha for c in self[sha].parents]) ) )
 
   def new_branch ( self , branchname ) :
-      match = [ branch for branch in self.branches if branch.name == branchname and not branch.is_primary() ]
+      match = [ branch for branch in self.branches if branch.name == branchname ]
       if match :
           assert len(match) == 1
+          if match[0].is_primary() :
+              return match[0]
           return self.new_branch( "%s (2)" % branchname )
       else :
           self.branches.append( Branch(branchname) )
