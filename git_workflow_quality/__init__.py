@@ -430,7 +430,7 @@ class Repository ( dict ) :
                     print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
                 else :
                     if not [ b for (c,b) in branches if c == commit.parents[0] ] :
-                      source = self.new_branch(merged.group('source').strip("'").replace('origin/', ''))
+                      source = self.new_branch(merged.group('source').strip("'"))
                       branches.append( ( commit.parents[0] , source ) )
                       commit.parents[0].set_branch(source, commit)
                     else :
