@@ -438,7 +438,17 @@ class Repository ( dict ) :
                     commit.parent.set_branch(target, commit)
 
     for sha,branchname in get_branches() :
-      if not [ b for (c,b) in branches if c == self[sha] ] :
+        match = [ B for B in branches if B[0] == self[sha] ]
+        if match :
+            c,b = match[0]
+            if branchname == b.name :
+                continue
+            # This case only might arise when remote tips are merged into local-only branches
+            print "WARNING : branch '%s' overwritten by '%s'" % ( b.name , branchname )
+            assert len(b) < 2
+            self[sha].branch = None
+            self.branches.remove(b)
+            branches.remove((c,b))
         branch = self.new_branch(branchname)
         branches.append( ( self[sha] , branch ) )
         self[sha].set_branch( branch )
