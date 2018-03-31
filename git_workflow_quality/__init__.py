@@ -151,7 +151,7 @@ class Branch ( list ) :
         fd.write( '  %s [ label="%s" ];\n' % ( self.as_var() , self.name ) )
 
     def digraph ( self , fd=os.sys.stdout ) :
-        if self.source() != '<Initial>' :
+        if self.source() != '<Initial>' and self.begin().parent.forks :
             fd.write( "  %s -> %s;\n" % ( self.begin().parent.branch.as_var() , self.as_var() ) )
         sources , targets = self.relations()
         for parent in sources :
