@@ -10,6 +10,7 @@ if __name__ == '__main__' :
     parser = argparse.ArgumentParser(description='Extract simple analytics from git repository')
     parser.add_argument('--detailed', action='store_true', help='Show per-branch statistics')
     parser.add_argument('--graph', choices=['topo', 'date'], help='Generate gitgraphjs file')
+    parser.add_argument('--dot', help='Express branch relations in dot language')
     args = parser.parse_args()
 
     repo = git_workflow_quality.Repository()
@@ -20,4 +21,14 @@ if __name__ == '__main__' :
         git_workflow_quality.gitgraphjs.graph( repo , args.graph )
 
     print repo.events()
+
+    if args.dot :
+        fd = open( args.dot , 'w' )
+        fd.write( 'digraph G {\n' )
+        for branch in repo.branches :
+            branch.dotlabel(fd)
+        for branch in repo.branches :
+            branch.digraph(fd)
+        fd.write( '}\n' )
+        fd.close()
 
