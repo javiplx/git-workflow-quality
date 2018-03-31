@@ -148,7 +148,7 @@ class Branch ( list ) :
         return sources , targets
 
     def dotlabel ( self , fd=os.sys.stdout ) :
-        fd.write( '  %s [ label="%s" ];\n' % ( self.as_var() , self.name ) )
+        fd.write( '  %s [ label="%s" ];\n' % ( self.as_var() , self.name.replace(' (2)', '') ) )
 
     def digraph ( self , fd=os.sys.stdout ) :
         if self.source() != '<Initial>' and self.begin().parent.forks :
