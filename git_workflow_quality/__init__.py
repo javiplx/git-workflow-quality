@@ -304,13 +304,13 @@ class Repository ( dict ) :
 
   def report( self , details=False) :
       output = ['']
-      output.append( "Number of commits:      %s" % len(self) )
-      output.append( "Number of branches:     %s" % ( len(self.branches) - len([b for b in self.branches.values() if b.is_primary()]) ) )
-      output.append( "# initial commits:      %s" % len([c for c in self.values() if not c.parent ]) )
-      output.append( "Number of merges:       %s" % len([c for c in self.values() if c.parents]) )
-      output.append( "Ammended commits:       %s" % len([c for c in self.values() if c.author != c.committer and not c.parents]) )
-      output.append( "Commits with no branch: %s" % len([c for c in self.values() if not c.branch]) )
-      output.append( "Unlabelled heads:       %s" % len([c for c in self.values() if not c.branch and not c.child]) )
+      output.append( "Number of commits:  %s" % len(self) )
+      output.append( "Number of branches: %s" % ( len(self.branches) - len([b for b in self.branches.values() if b.is_primary()]) ) )
+      output.append( "# initial commits:  %s" % len([c for c in self.values() if not c.parent ]) )
+      output.append( "Number of merges:   %s" % len([c for c in self.values() if c.parents]) )
+      output.append( "Ammended commits:   %s" % len([c for c in self.values() if c.author != c.committer and not c.parents]) )
+      output.append( "# orphan commits    %s" % len([c for c in self.values() if c.branch.name.startswith('orphan_'0)) )
+      output.append( "Unlabelled heads:   %s" % len([c for c in self.values() if not c.branch and not c.child]) )
 
       empty = [ self.branches.pop(b.name) for b in self.branches.values() if len(b) == 0 ]
       if empty :
@@ -447,4 +447,23 @@ class Repository ( dict ) :
                  c.set_child( child[0] )
             else :
                  c.set_child( sorted(c.forks, key=lambda x : x.committer_date)[0] )
+
+    self.order.reverse()
+    m = 0
+    for c in self.order :
+        if not c.branch :
+            m += 1
+            newbranch = self.new_branch("orphan_%s" % m)
+            branches.append( ( c , newbranch ) )
+            c.set_branch( newbranch )
+            c = c.parent
+            while c :
+                if not c.parent : # Initial commit detection
+                    c.set_branch( branch )
+                    break
+                if c.branch and not branch.is_primary() :
+                    break
+                c.set_branch(branch)
+                c = c.parent
+    self.order.reverse()
 
