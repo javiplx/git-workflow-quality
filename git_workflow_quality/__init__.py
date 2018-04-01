@@ -413,9 +413,13 @@ class Repository ( dict ) :
               commit.parents[0].set_branch(source, commit)
             else :
               commit.parents[0].forks.append( commit )
-            target = self.new_branch(merged.group('target').strip("'"))
-            branches.append( ( commit.parent , target ) )
-            commit.parent.set_branch(target, commit)
+            if not [ b for (c,b) in branches if c == commit ] :
+                target = self.new_branch(merged.group('target').strip("'"))
+                branches.append( ( commit.parent , target ) )
+                commit.parent.set_branch(target, commit)
+            else :
+                if commit.branch.name != merged.group('target').strip("'") :
+                    print "WARNING : '%s' not set on commit %s, already on '%s'" % ( merged.group('target').strip("'") , commit.sha , commit.branch )
         else :
             merged = re.search("Merge remote-tracking branch (?P<source>[^ ]*) into (?P<target>[^ ]*)", commit.message)
             if merged :
@@ -428,9 +432,13 @@ class Repository ( dict ) :
                       commit.parents[0].set_branch(source, commit)
                     else :
                       commit.parents[0].forks.append( commit )
-                    target = self.new_branch(merged.group('target').strip("'"))
-                    branches.append( ( commit.parent , target ) )
-                    commit.parent.set_branch(target, commit)
+                    if not [ b for (c,b) in branches if c == commit ] :
+                        target = self.new_branch(merged.group('target').strip("'"))
+                        branches.append( ( commit.parent , target ) )
+                        commit.parent.set_branch(target, commit)
+                    else :
+                        if commit.branch.name != merged.group('target').strip("'") :
+                            print "WARNING : '%s' not set on commit %s, already on '%s'" % ( merged.group('target').strip("'") , commit.sha , commit.branch )
 
     for sha,branchname in get_branches() :
         match = [ B for B in branches if B[0] == self[sha] ]
