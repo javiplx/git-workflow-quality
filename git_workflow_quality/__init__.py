@@ -483,3 +483,16 @@ class Repository ( dict ) :
         for branch in empty :
             self.branches.remove(branch)
 
+    n = 0
+    # Running in a single loop to detect empty branches seems to produce bad side effects
+    for branch in self.branches :
+        source = branch.begin().parent
+        if source and source.child and source.child.branch == branch :
+            for commit in list(branch) :
+                    source.branch.append( commit )
+            assert len(branch) == 0
+            self.branches.remove(branch)
+            n += 1
+    if n :
+        print "WARNING : %d branches removed by concatenation with parents" % n
+
