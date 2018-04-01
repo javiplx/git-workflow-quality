@@ -438,6 +438,10 @@ class Repository ( dict ) :
             c,b = match[0]
             if branchname == b.name :
                 continue
+            if b.is_primary() :
+                # This case usually applies to remote branches created but with no commits pushed
+                print "WARNING : drop branch '%s' laid over '%s' at %s" % ( branchname , b.name , sha )
+                continue
             # This case only might arise when remote tips are merged into local-only branches
             print "WARNING : branch '%s' overwritten by '%s' at %s" % ( b.name , branchname , sha )
             assert len(b) < 2
