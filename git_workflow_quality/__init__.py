@@ -342,14 +342,6 @@ class Repository ( dict ) :
       output.append( "Commits with no branch: %s" % len([c for c in self.values() if not c.branch]) )
       output.append( "Unlabelled heads:       %s" % len([c for c in self.values() if not c.branch and not c.child]) )
 
-      empty = [ branch for branch in self.branches if len(branch) == 0 ]
-      if empty :
-          output.append( "" )
-          output.append( "Branches without commits (%s)" % len(empty) )
-          for branch in empty :
-              self.branches.remove( branch )
-              output.append( " * %s" % branch )
-
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
       output.append( "%-25s %8s   %7s" % ( 'PRIMARY' , '#commits' , '#merges' ) )
@@ -372,9 +364,8 @@ class Repository ( dict ) :
               output.append( "     -----" )
               for release in releases :
                   output.append( report_fmt % release.report(True) )
-                  commits = self.branches[release]
-                  if [c for c in commits if not c.parents] :
-                      output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
+                  if release.commits() :
+                      output[-1] += " *** standard commits (%d)" % len(release.commits())
 
       branches = [ b for b in self.branches if not b.is_primary() and not b.is_release() ]
       if branches :
@@ -432,7 +423,7 @@ class Repository ( dict ) :
                     print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
                 else :
                     if not [ b for (c,b) in branches if c == commit.parents[0] ] :
-                      source = self.new_branch(merged.group('source').strip("'"))
+                      source = self.new_branch(merged.group('source').strip("'").replace('origin/', ''))
                       branches.append( ( commit.parents[0] , source ) )
                       commit.parents[0].set_branch(source, commit)
                     else :
@@ -448,7 +439,7 @@ class Repository ( dict ) :
             if branchname == b.name :
                 continue
             # This case only might arise when remote tips are merged into local-only branches
-            print "WARNING : branch '%s' overwritten by '%s'" % ( b.name , branchname )
+            print "WARNING : branch '%s' overwritten by '%s' at %s" % ( b.name , branchname , sha )
             assert len(b) < 2
             self[sha].branch = None
             self.branches.remove(b)
@@ -462,9 +453,9 @@ class Repository ( dict ) :
         for c in commit.parents :
             if not c.branch :
                 n += 1
-                newbranch = self.new_branch("branch_%s" % n)
-                branches.append( ( c , newbranch ) )
-                c.set_branch( newbranch , commit )
+                branch = self.new_branch("removed %s" % n)
+                branches.append( ( c , branch ) )
+                c.set_branch( branch , commit )
             elif c.child != commit and commit not in c.forks :
                 c.forks.append( commit )
     if n : print "WARNING : %d removed branch not automatically detected" % n
@@ -473,4 +464,10 @@ class Repository ( dict ) :
 
     for c,branch in branches :
         branch.ancestry( c )
+
+    empty = [ branch for branch in self.branches if len(branch) == 0 ]
+    if empty :
+        print "ERROR : generated empty branches %s" % ", ".join(map(str,empty))
+        for branch in empty :
+            self.branches.remove(branch)
 
