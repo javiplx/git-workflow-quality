@@ -164,10 +164,12 @@ def get_branches () :
     branches = []
     refs = "refs/heads"
     info = "info/refs"
+    packs = "packed-refs"
     heads = "refs/heads"
     if os.path.isdir(".git") :
         refs = "refs/remotes/origin"
         info = os.path.join( ".git" , info )
+        packs = os.path.join( ".git" , packs )
         heads = os.path.join( ".git" , refs )
     if os.path.isfile(info) :
         with open(info) as fd :
@@ -175,6 +177,14 @@ def get_branches () :
             while line[:-1] :
                 items = line[:-1].split(None, 2)
                 if items[1].startswith(refs) :
+                    branches.append( ( items[0] , items[1][len(refs)+1:] ) )
+                line = fd.readline()
+    if os.path.isfile(packs) :
+        with open(packs) as fd :
+            line = fd.readline()
+            while line[:-1] :
+                items = line[:-1].split(None, 2)
+                if len(items) > 1 and items[1].startswith(refs) :
                     branches.append( ( items[0] , items[1][len(refs)+1:] ) )
                 line = fd.readline()
     for root, dirs, files in os.walk(heads) :
