@@ -149,6 +149,65 @@ class Branch ( list ) :
                 targets.append( child )
         return sources , targets
 
+    def gitgraph ( self , filename="branch.html" ) :
+        shown_branches = []
+
+        fd = open( filename , 'w' )
+        fd.write( gitgraphjs.gitgraph_head )
+
+        initial = self.begin()
+        if initial and initial.parent :
+            parent = initial.parent
+            shown_branches.append( parent.branch )
+            parent.branch.render( fd , shown_branches=shown_branches )
+
+        final = self.end()
+        if final and final.child :
+            child = final.child
+            if child.branch and child.branch not in shown_branches :
+                shown_branches.append( child.branch )
+                child.branch.render( fd , shown_branches=shown_branches )
+
+        for source in self.relations()[0] :
+            if source.branch not in shown_branches :
+                shown_branches.append( source.branch )
+                source.branch.render( fd , shown_branches=shown_branches )
+
+        if initial and initial.parent and initial.parent.branch != self :
+            parent = initial.parent
+            parent.render( fd )
+
+        if final and final.child and final.parent.branch != self :
+            child = final.child
+            child.parent.render( fd )
+
+        if initial and initial.parent :
+            self.render( fd , initial.parent.branch , shown_branches )
+        else :
+            self.render( fd , shown_branches=shown_branches )
+
+        for c in self.commit_list() :
+            c.render( fd )
+            for child in c.forks :
+                if child.branch in shown_branches :
+                    print " -> %s" % child
+                    raise Exception("Remerge tu")
+                shown_branches.append( child.branch )
+                child.branch.render( fd , shown_branches=shown_branches )
+                child.render( fd )
+            if c.parents : raise Exception("DENTRO")
+
+        if final and final.child :
+            child = final.child
+            if child.branch :
+                if child.parents :
+                    child.render( fd , child.parents[0] )
+                else :
+                    child.render( fd )
+
+        fd.write( gitgraphjs.gitgraph_tail )
+        fd.close()
+
     def dotlabel ( self , fd=os.sys.stdout ) :
         fd.write( '  %s [ label="%s" ];\n' % ( self.as_var() , self.name.replace(' (2)', '') ) )
 
