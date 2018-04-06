@@ -171,7 +171,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                   # We just assume that target will appear on pending in the future
                   break_it = True
               else :
-                target.render( fd )
+                target.render( fd , c , False )
                 pending.remove( target )
                 if target.child :
                     pending.append( target.child )

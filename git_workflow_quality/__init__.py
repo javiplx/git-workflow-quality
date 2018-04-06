@@ -37,8 +37,8 @@ class Commit :
                 self.forks.remove( commit )
         self.child = commit
 
-    def render ( self , fd ) :
-        if self.parents :
+    def render ( self , fd , render_merge=True ) :
+        if self.parents and render_merge :
             fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( self.parents[0].branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
         else :
             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( self.branch.as_var() , self.sha , self.message ) )
@@ -175,7 +175,7 @@ class Branch ( list ) :
 
         if initial and initial.parent and initial.parent.branch != self :
             parent = initial.parent
-            parent.render( fd )
+            parent.render( fd , False )
 
         if final and final.child and final.child.branch and final.child.branch != initial.parent.branch :
             child = final.child
