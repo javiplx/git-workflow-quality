@@ -463,11 +463,11 @@ class Repository ( dict ) :
             c = c.parent
             while c :
                 if not c.parent : # Initial commit detection
-                    c.set_branch( branch )
+                    c.set_branch( newbranch )
                     break
-                if c.branch and not branch.is_primary() :
+                if c.branch and not newbranch.is_primary() :
                     break
-                c.set_branch(branch)
+                c.set_branch(newbranch)
                 c = c.parent
     self.order.reverse()
 
