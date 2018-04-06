@@ -109,7 +109,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
         end_of_branch = c.child.branch != current_branch
         if c.parents :
             if current_branch != c.branch :
-                c.render( fd , c.parents[0] )
+                c.render( fd )
                 pending.remove(c)
                 target = c.child
                 pending.append( target )
@@ -125,11 +125,11 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                             pending.remove(p)
                             if p.child :
                                 pending.append(p.child)
-                c.render( fd , c.parents[0] )
+                c.render( fd )
             else :
               if c.parents[0].branch not in shown_branches :
                 if realFirst :
-                  c.render( fd , c.parents[0] )
+                  c.render( fd )
                 else :
                   pending.append(c)
                   break
@@ -171,7 +171,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                   # We just assume that target will appear on pending in the future
                   break_it = True
               else :
-                target.render( fd , c )
+                target.render( fd )
                 pending.remove( target )
                 if target.child :
                     pending.append( target.child )
@@ -206,7 +206,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     else :
         shown_branches.remove( current_branch )
         if c.parents :
-            c.render( fd , c.parents[0] )
+            c.render( fd )
         else :
             c.render(fd)
         for child in c.forks :
@@ -233,7 +233,7 @@ def chrono_plot ( repo , fd=sys.stdout) :
                 c.render(fd)
         else :
             first = True
-            c.render(fd, c.parents[0])
+            c.render(fd)
             if not c.parents[0].child :
                 if c.parents[0].branch in shown_branches :
                     shown_branches.remove( c.parents[0].branch )

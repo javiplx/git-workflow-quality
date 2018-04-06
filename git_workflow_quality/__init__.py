@@ -37,9 +37,9 @@ class Commit :
                 self.forks.remove( commit )
         self.child = commit
 
-    def render ( self , fd , merged_commit=None ) :
+    def render ( self , fd ) :
         if self.parents :
-            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( merged_commit.branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
+            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( self.parents[0].branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
         else :
             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( self.branch.as_var() , self.sha , self.message ) )
 
@@ -177,7 +177,7 @@ class Branch ( list ) :
             parent = initial.parent
             parent.render( fd )
 
-        if final and final.child and final.parent.branch != self :
+        if final and final.child and final.child.branch and final.child.branch != initial.parent.branch :
             child = final.child
             child.parent.render( fd )
 
@@ -200,10 +200,7 @@ class Branch ( list ) :
         if final and final.child :
             child = final.child
             if child.branch :
-                if child.parents :
-                    child.render( fd , child.parents[0] )
-                else :
-                    child.render( fd )
+                child.render( fd )
 
         fd.write( gitgraphjs.gitgraph_tail )
         fd.close()
