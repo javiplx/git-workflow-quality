@@ -354,7 +354,7 @@ class Repository ( dict ) :
           self.branches.append( Branch(branchname) )
           return self.branches[-1]
 
-  def events( self ) :
+  def events( self , details=False) :
       output = ['']
 
       multimerged = {}
@@ -394,6 +394,7 @@ class Repository ( dict ) :
       multisource = 0
       mergeconflict = 0
       for branch in self.branches :
+          dump = False
           if branch.is_primary() or branch.is_release() :
               continue
           if branch.end().child and branch.end().forks :
@@ -401,20 +402,28 @@ class Repository ( dict ) :
                 if child.branch and child.branch.begin() and child.branch.begin().parent :
                   if child.branch.begin().parent == branch.end() :
                       reutilized += 1
+                      dump = True
           if branch.end().child and branch.end().parents :
               if branch.end().parents[0] == branch.end().child.parent :
                   mergeconflict += 1
+                  dump = True
           source = branch.source()
           target = branch.target()
           sources , targets = branch.relations()
           if targets :
               multitarget += 1
+              dump = True
           if source in [c.branch for c in sources] :
               multimerged += 1
+              dump = True
           if source != target and branch.end().child :
               indirect += 1
+              dump = True
           if [ branch for commit in sources if commit.branch != source ] :
               multisource += 1
+              dump = True
+          if dump and details :
+              branch.gitgraph( "%s.html" % branch.as_var().replace('branch_', 'branches/', 1) )
       output.append( "Branch events" )
       output.append( "  multitarget   %4d" % multitarget )
       output.append( "  reutilized    %4d" % reutilized )

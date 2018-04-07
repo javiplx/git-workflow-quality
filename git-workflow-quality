@@ -20,7 +20,7 @@ if __name__ == '__main__' :
     if args.graph :
         git_workflow_quality.gitgraphjs.graph( repo , args.graph )
 
-    print repo.events()
+    print repo.events(args.detailed)
 
     if args.dot :
         fd = open( args.dot , 'w' )
