@@ -156,51 +156,89 @@ class Branch ( list ) :
         fd.write( gitgraphjs.gitgraph_head )
 
         initial = self.begin()
-        if initial and initial.parent :
-            parent = initial.parent
-            shown_branches.append( parent.branch )
-            parent.branch.render( fd , shown_branches=shown_branches )
-
         final = self.end()
-        if final and final.child :
-            child = final.child
-            if child.branch and child.branch not in shown_branches :
-                shown_branches.append( child.branch )
-                child.branch.render( fd , shown_branches=shown_branches )
+        initials , finals = [] , []
 
-        for source in self.relations()[0] :
-            if source.branch not in shown_branches :
+        commit = initial.parent
+        if commit :
+            if commit.branch and commit.branch not in shown_branches :
+                shown_branches.append( commit.branch )
+                commit.branch.render( fd , shown_branches=shown_branches )
+                initials.append( commit )
+        for commit in initial.parents :
+            if commit.branch and commit.branch not in shown_branches :
+                shown_branches.append( commit.branch )
+                commit.branch.render( fd , shown_branches=shown_branches )
+                initials.append( commit )
+
+        commit = final.child
+        if commit :
+            if commit.branch and commit.branch not in shown_branches :
+                if commit.parents or commit.parent.branch != self :
+                    shown_branches.append( commit.branch )
+                    commit.branch.render( fd , shown_branches=shown_branches )
+                    if commit.parent.branch == commit.branch :
+                        finals.append( commit.parent )
+                    elif commit.parents[0].branch == commit.branch :
+                        finals.append( commit.parents[0] )
+                    else :
+                        finals.append( commit )
+        for commit in final.forks :
+            if commit.branch and commit.branch not in shown_branches :
+                if commit.parents or commit.parent.branch != self :
+                    shown_branches.append( commit.branch )
+                    commit.branch.render( fd , shown_branches=shown_branches )
+                    if commit.parent.branch == commit.branch :
+                        finals.append( commit.parent )
+                    elif commit.parents[0].branch == commit.branch :
+                        finals.append( commit.parents[0] )
+                    else :
+                        finals.append( commit )
+
+        sources , targets = self.relations()
+        for source in sources :
+            if source.branch and source.branch not in shown_branches :
                 shown_branches.append( source.branch )
                 source.branch.render( fd , shown_branches=shown_branches )
+                initials.append ( source )
 
-        if initial and initial.parent and initial.parent.branch != self :
-            parent = initial.parent
-            parent.render( fd , False )
+        for target in targets :
+            if target.branch and target.branch not in shown_branches :
+                # A single parent means that will be created as a fork in main loop
+                if target.parents :
+                    shown_branches.append( target.branch )
+                    target.branch.render( fd , shown_branches=shown_branches )
+                    if target.parents[0].branch == target.branch :
+                        finals.append( target.parents[0] )
+                    else :
+                        finals.append( target.parent )
 
-        if final and final.child and final.child.branch and final.child.branch != initial.parent.branch :
-            child = final.child
-            child.parent.render( fd )
+        # All commits rendered after branch creation to avoid a single original commit
+        # As we don't care about their history, we just render them as plain commits
+        for commit in initials + finals :
+            commit.render( fd , False )
 
-        if initial and initial.parent :
+        assert self not in shown_branches
+        if initial.parent :
             self.render( fd , initial.parent.branch , shown_branches )
         else :
             self.render( fd , shown_branches=shown_branches )
 
         for c in self.commit_list() :
             c.render( fd )
-            for child in c.forks :
-                if child.branch in shown_branches :
-                    print " -> %s" % child
-                    raise Exception("Remerge tu")
-                shown_branches.append( child.branch )
-                child.branch.render( fd , shown_branches=shown_branches )
-                child.render( fd )
-            if c.parents : raise Exception("DENTRO")
+            for commit in c.forks :
+                if commit.branch :
+                    if commit.branch not in shown_branches :
+                        shown_branches.append( commit.branch )
+                        commit.branch.render( fd , self , shown_branches )
+                    commit.render( fd )
+                    fd.write( "%s.checkout();\n" % self.as_var() )
 
-        if final and final.child :
-            child = final.child
-            if child.branch :
-                child.render( fd )
+        if c.child :
+            if c.child.branch :
+                c.child.render( fd )
+        else :
+            print "WARNING : No end commit for %s" % self
 
         fd.write( gitgraphjs.gitgraph_tail )
         fd.close()
