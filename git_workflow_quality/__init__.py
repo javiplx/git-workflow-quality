@@ -150,7 +150,7 @@ class Branch ( list ) :
         return sources , targets
 
     def gitgraph ( self , filename="branch.html" ) :
-        shown_branches = []
+        shown_branches = [ self ]
 
         fd = open( filename , 'w' )
         fd.write( gitgraphjs.gitgraph_head )
@@ -163,12 +163,12 @@ class Branch ( list ) :
         if commit :
             if commit.branch and commit.branch not in shown_branches :
                 shown_branches.append( commit.branch )
-                commit.branch.render( fd , shown_branches=shown_branches )
+                commit.branch.render( fd , shown_branches=shown_branches , force=True )
                 initials.append( commit )
         for commit in initial.parents :
             if commit.branch and commit.branch not in shown_branches :
                 shown_branches.append( commit.branch )
-                commit.branch.render( fd , shown_branches=shown_branches )
+                commit.branch.render( fd , shown_branches=shown_branches , force=True )
                 initials.append( commit )
 
         commit = final.child
@@ -176,7 +176,7 @@ class Branch ( list ) :
             if commit.branch and commit.branch not in shown_branches :
                 if commit.parents or commit.parent.branch != self :
                     shown_branches.append( commit.branch )
-                    commit.branch.render( fd , shown_branches=shown_branches )
+                    commit.branch.render( fd , shown_branches=shown_branches , force=True )
                     if commit.parent.branch == commit.branch :
                         finals.append( commit.parent )
                     elif commit.parents[0].branch == commit.branch :
@@ -187,7 +187,7 @@ class Branch ( list ) :
             if commit.branch and commit.branch not in shown_branches :
                 if commit.parents or commit.parent.branch != self :
                     shown_branches.append( commit.branch )
-                    commit.branch.render( fd , shown_branches=shown_branches )
+                    commit.branch.render( fd , shown_branches=shown_branches , force=True )
                     if commit.parent.branch == commit.branch :
                         finals.append( commit.parent )
                     elif commit.parents[0].branch == commit.branch :
@@ -199,7 +199,7 @@ class Branch ( list ) :
         for source in sources :
             if source.branch and source.branch not in shown_branches :
                 shown_branches.append( source.branch )
-                source.branch.render( fd , shown_branches=shown_branches )
+                source.branch.render( fd , shown_branches=shown_branches , force=True )
                 initials.append ( source )
 
         for target in targets :
@@ -207,7 +207,7 @@ class Branch ( list ) :
                 # A single parent means that will be created as a fork in main loop
                 if target.parents :
                     shown_branches.append( target.branch )
-                    target.branch.render( fd , shown_branches=shown_branches )
+                    target.branch.render( fd , shown_branches=shown_branches , force=True )
                     if target.parents[0].branch == target.branch :
                         finals.append( target.parents[0] )
                     else :
@@ -218,11 +218,10 @@ class Branch ( list ) :
         for commit in initials + finals :
             commit.render( fd , False )
 
-        assert self not in shown_branches
         if initial.parent :
-            self.render( fd , initial.parent.branch , shown_branches )
+            self.render( fd , initial.parent.branch , shown_branches , True )
         else :
-            self.render( fd , shown_branches=shown_branches )
+            self.render( fd , shown_branches=shown_branches , force=True )
 
         for c in self.commit_list() :
             c.render( fd )
@@ -230,7 +229,7 @@ class Branch ( list ) :
                 if commit.branch :
                     if commit.branch not in shown_branches :
                         shown_branches.append( commit.branch )
-                        commit.branch.render( fd , self , shown_branches )
+                        commit.branch.render( fd , self , shown_branches , True )
                     commit.render( fd )
                     fd.write( "%s.checkout();\n" % self.as_var() )
 
@@ -269,11 +268,13 @@ class Branch ( list ) :
     def as_var ( self ) :
         return "branch_" + self.name.replace(' (2)','_duplicated').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
 
-    def render ( self , fd , parent=None , shown_branches=None ) :
+    def render ( self , fd , parent=None , shown_branches=None , force=False ) :
         if self.is_primary() :
             column = Branch.primary.index(self.name)
         else :
             column = len(shown_branches)
+        if force :
+            column = shown_branches.index(self)
         json = 'name:"%s", column:%d' % ( self , column )
         if parent :
             fd.write( 'var %s = %s.branch({%s});\n' % ( self.as_var() , parent.as_var() , json ) )
