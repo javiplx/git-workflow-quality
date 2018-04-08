@@ -37,9 +37,12 @@ class Commit :
                 self.forks.remove( commit )
         self.child = commit
 
-    def render ( self , fd , render_merge=True ) :
+    def render ( self , fd , render_merge=True , switch_parents=False ) :
         if self.parents and render_merge :
-            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( self.parents[0].branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
+            if switch_parents :
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( self.parent.branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
+            else :
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( self.parents[0].branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
         else :
             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( self.branch.as_var() , self.sha , self.message ) )
 
@@ -241,6 +244,9 @@ class Branch ( list ) :
 
         if c.child :
             if c.child.branch :
+              if c.child.parents and c.child.parent.branch == self :
+                c.child.render( fd , switch_parents=True )
+              else :
                 c.child.render( fd )
         else :
             print "WARNING : No end commit for %s" % self
