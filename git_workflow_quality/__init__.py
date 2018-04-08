@@ -20,20 +20,23 @@ class Commit :
         self.forks = []
         self.rendered = False
 
-    def set_branch ( self , branch ) :
-        if branch < self.branch :
+    def set_branch ( self , branch , parent=None ) :
+        if branch <= self.branch :
             # self.branch has a higher weight respect to branch
             return
         if self.branch and not branch.is_primary() :
             print "WARNING : cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch )
             return
         branch.append( self )
+        if parent :
+            self.set_child( parent )
 
     def set_child ( self , commit ) :
-        if self.child :
-            raise Exception( "cannot assign %s as child of %s, already parent of %s" % ( sha , self.sha , self.child.sha ) )
+        if self.child and self.child != commit :
+            self.forks.append( self.child )
+            if commit in self.forks :
+                self.forks.remove( commit )
         self.child = commit
-        self.forks.remove(commit)
 
     def get_parents ( self ) :
         parents = []
@@ -49,9 +52,12 @@ class Commit :
         childs.extend( self.forks )
         return childs
 
-    def render ( self , fd , merged_commit=None ) :
-        if self.parents :
-            fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( merged_commit.branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
+    def render ( self , fd , render_merge=True , switch_parents=False ) :
+        if self.parents and render_merge :
+            if switch_parents :
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( self.parent.branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
+            else :
+                fd.write( '%s.merge(%s, {sha1:"%s", message:"%s"});\n' % ( self.parents[0].branch.as_var() , self.branch.as_var() , self.sha , self.message ) )
         else :
             fd.write( '%s.commit({sha1:"%s", message:"%s"});\n' % ( self.branch.as_var() , self.sha , self.message ) )
         self.rendered = True
@@ -75,23 +81,27 @@ class Branch ( list ) :
         list.__init__( self )
 
     def commits ( self ) :
-        return [c for c in self if not c.parents]
+        return [c for c in list.__iter__(self) if not c.parents]
 
     def merges ( self ) :
-        return [c for c in self if c.parents]
+        return [c for c in list.__iter__(self) if c.parents]
 
     def stats ( self ) :
         return len(self), len(self.commits()), len(self.merges())
 
     def begin ( self ) :
-        return self[0]
+        begins = [ c for c in list.__iter__(self) if not c.parent or c.parent.branch != self ]
+        assert len(begins) == 1
+        return begins[0]
 
     def end ( self ) :
-        return self[-1]
+        ends = [ c for c in list.__iter__(self) if not c.child or c.child.branch != self ]
+        assert len(ends) == 1
+        return ends[0]
 
     def source ( self ) :
         source = self.begin().parent
-        if not source :
+        if not source or not source.branch :
             return '<Initial>'
         return source.branch.name
 
@@ -107,22 +117,44 @@ class Branch ( list ) :
     def is_release ( self ) :
         return self.name.startswith('release')
 
-    def __lt__ ( self , other ) :
+    def __le__ ( self , other ) :
         if not other :
             return False
         if self == other :
-            return True
+            return False
         if self.is_primary() and other.is_primary() :
             return Branch.primary.index(other.name) < Branch.primary.index(self.name)
         if other.is_primary() :
             return True
         return False
 
+    def ancestry ( self , commit ) :
+        parent = commit
+        commit = commit.parent
+        while commit :
+            if commit.branch and not self.is_primary() :
+                if commit.child and commit.child != parent :
+                    commit.forks.append( parent )
+                else :
+                    commit.child = parent
+                break
+            commit.set_branch( self , parent )
+            parent = commit
+            commit = commit.parent
+
     def append ( self , commit ) :
         if commit.branch :
             commit.branch.remove( commit )
         list.append( self , commit )
         commit.branch = self
+
+    def commit_list ( self ) :
+        this = self.begin()
+        while this.child and this.child.branch == self :
+            yield this
+            this = this.child
+        yield this
+        raise StopIteration()
 
     def __str__ ( self ) :
         return self.name
@@ -132,10 +164,115 @@ class Branch ( list ) :
         targets = []
         for c in self :
             for parent in c.parents :
-                sources.append( parent.branch )
+                sources.append( parent )
             for child in c.forks :
-                targets.append( child.branch )
+                targets.append( child )
         return sources , targets
+
+    def gitgraph ( self , filename="branch.html" ) :
+        shown_branches = [ self ]
+
+        fd = open( filename , 'w' )
+        fd.write( gitgraphjs.gitgraph_head )
+
+        initials , finals = [] , []
+
+        for commit in self.begin().get_parents() :
+            if commit.branch not in shown_branches :
+                shown_branches.append( commit.branch )
+                commit.branch.render( fd , shown_branches=shown_branches , force=True )
+                initials.append( commit )
+
+        for commit in self.end().get_childs() :
+            # Only merges are handled here. Child branches will be created on loop
+            # If branch is already shown, we don't need to write any commit
+            if commit.branch and commit.parents and commit.branch not in shown_branches :
+                shown_branches.append( commit.branch )
+                commit.branch.render( fd , shown_branches=shown_branches , force=True )
+                # For proper rendering, we must choose a parent in the same branch, which means render as parent of himself as fallback
+                if commit.parent.branch == commit.branch :
+                    finals.append( commit.parent )
+                elif commit.parents[0].branch == commit.branch :
+                    finals.append( commit.parents[0] )
+                else :
+                    finals.append( commit )
+
+        sources , targets = self.relations()
+        for source in sources :
+            if source.branch in [ target.branch for target in targets ] :
+                if not source.parents and source.parent.branch == self :
+                    continue
+            if source.branch and source.branch not in shown_branches :
+                shown_branches.append( source.branch )
+                source.branch.render( fd , shown_branches=shown_branches , force=True )
+                initials.append ( source )
+
+        for target in targets :
+            # Only merges are handled here. Child branches will be created on loop
+            # If branch is already shown, we don't need to write any commit
+            if target.branch and target.parents and target.branch not in shown_branches :
+                shown_branches.append( target.branch )
+                target.branch.render( fd , shown_branches=shown_branches , force=True )
+                # For proper rendering, we must choose a parent in the same branch, which means render as parent of himself as fallback
+                if target.parent.branch == target.branch :
+                    finals.append( target.parent )
+                elif target.parents[0].branch == target.branch :
+                    finals.append( target.parents[0] )
+                else :
+                    finals.append( target )
+
+        # All commits rendered after branch creation to avoid a single original commit
+        # As we don't care about their history, we just render them as plain commits
+        for commit in initials + finals :
+            commit.render( fd , False )
+
+        if self.begin().parent :
+            self.render( fd , self.begin().parent.branch , shown_branches , True )
+        else :
+            self.render( fd , shown_branches=shown_branches , force=True )
+
+        for c in self.commit_list() :
+            # Ensure that ancestry line is clean
+            assert c == self.end() or c.child.branch == self
+            c.render( fd )
+            for commit in c.forks :
+                if commit.branch :
+                    if commit.branch not in shown_branches :
+                        shown_branches.append( commit.branch )
+                        commit.branch.render( fd , self , shown_branches , True )
+                    if commit.parents and commit.parent.branch == self :
+                        commit.render( fd , switch_parents=True )
+                    else :
+                        commit.render( fd )
+                    fd.write( "%s.checkout();\n" % self.as_var() )
+
+        if c.child :
+            if c.child.branch :
+              if c.child.parents and c.child.parent.branch == self :
+                c.child.render( fd , switch_parents=True )
+              else :
+                c.child.render( fd )
+        else :
+            print "WARNING : No end commit for %s" % self
+
+        fd.write( gitgraphjs.gitgraph_tail )
+        fd.close()
+
+    def dotlabel ( self , fd=os.sys.stdout ) :
+        fd.write( '  %s [ label="%s" ];\n' % ( self.as_var() , self.name.replace(' (2)', '') ) )
+
+    def digraph ( self , fd=os.sys.stdout ) :
+        if self.source() != '<Initial>' and self.begin().parent.forks :
+            fd.write( "  %s -> %s;\n" % ( self.begin().parent.branch.as_var() , self.as_var() ) )
+        sources , targets = self.relations()
+        for parent in sources :
+          if parent.branch and parent != parent.branch.end() :
+            fd.write( "  %s -> %s;\n" % ( parent.branch.as_var() , self.as_var() ) )
+        for child in targets :
+          if child.branch and child != child.branch.begin() :
+            fd.write( "  %s -> %s;\n" % ( self.as_var() , child.branch.as_var() ) )
+        if self.target() != '<Final>' :
+            fd.write( "  %s -> %s;\n" % ( self.as_var() , self.end().child.branch.as_var() ) )
 
     def report ( self , branches=False ) :
         output = [ self.name[:25] , len(self.commits()) , len(self.merges()) ]
@@ -147,8 +284,8 @@ class Branch ( list ) :
     def as_var ( self ) :
         return "branch_" + self.name.replace(' (2)','_duplicated').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
 
-    def render ( self , fd , parent=None , shown_branches=None ) :
-        if self.is_primary() :
+    def render ( self , fd , parent=None , shown_branches=None , force=False ) :
+        if self.is_primary() and not force :
             column = Branch.primary.index(self.name)
         else :
             column = shown_branches.index(self)
@@ -201,7 +338,7 @@ class Repository ( dict ) :
   def __init__ ( self ) :
 
     self.order = []
-    self.branches = {}
+    self.branches = []
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H %ae %ce %s"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -233,14 +370,17 @@ class Repository ( dict ) :
                   raise Exception( "Octopus merges on %s from %s not handled" % ( self[sha].sha , ", ".join([c.sha for c in self[sha].parents]) ) )
 
   def new_branch ( self , branchname ) :
-      if self.branches.has_key( branchname ) :
-          if not self.branches[branchname].is_primary() :
-              return self.new_branch( "%s (2)" % branchname )
+      match = [ branch for branch in self.branches if branch.name == branchname ]
+      if match :
+          assert len(match) == 1
+          if match[0].is_primary() :
+              return match[0]
+          return self.new_branch( "%s (2)" % branchname )
       else :
-          self.branches[branchname] = Branch(branchname)
-      return self.branches[branchname]
+          self.branches.append( Branch(branchname) )
+          return self.branches[-1]
 
-  def events( self ) :
+  def events( self , details=False) :
       output = ['']
 
       multimerged = {}
@@ -279,28 +419,37 @@ class Repository ( dict ) :
       indirect = 0
       multisource = 0
       mergeconflict = 0
-      for branch in self.branches.values() :
+      for branch in self.branches :
+          dump = False
           if branch.is_primary() or branch.is_release() :
               continue
           if branch.end().child and branch.end().forks :
               for child in branch.end().forks :
-                if child.branch and child.branch.begin() :
+                if child.branch and child.branch.begin() and child.branch.begin().parent :
                   if child.branch.begin().parent == branch.end() :
                       reutilized += 1
+                      dump = True
           if branch.end().child and branch.end().parents :
               if branch.end().parents[0] == branch.end().child.parent :
                   mergeconflict += 1
+                  dump = True
           source = branch.source()
           target = branch.target()
           sources , targets = branch.relations()
           if targets :
               multitarget += 1
-          if source in sources :
+              dump = True
+          if source in [c.branch for c in sources] :
               multimerged += 1
+              dump = True
           if source != target and branch.end().child :
               indirect += 1
-          if [ branchname for branchname in sources if branchname != source ] :
+              dump = True
+          if [ branch for commit in sources if commit.branch != source ] :
               multisource += 1
+              dump = True
+          if dump and details :
+              branch.gitgraph( "%s.html" % branch.as_var().replace('branch_', 'branches/', 1) )
       output.append( "Branch events" )
       output.append( "  multitarget   %4d" % multitarget )
       output.append( "  reutilized    %4d" % reutilized )
@@ -315,27 +464,20 @@ class Repository ( dict ) :
   def report( self , details=False) :
       output = ['']
       output.append( "Number of commits:      %s" % len(self) )
-      output.append( "Number of branches:     %s" % ( len(self.branches) - len([b for b in self.branches.values() if b.is_primary()]) ) )
+      output.append( "Number of branches:     %s" % ( len(self.branches) - len([b for b in self.branches if b.is_primary()]) ) )
       output.append( "# initial commits:      %s" % len([c for c in self.values() if not c.parent ]) )
       output.append( "Number of merges:       %s" % len([c for c in self.values() if c.parents]) )
       output.append( "Ammended commits:       %s" % len([c for c in self.values() if c.author != c.committer and not c.parents]) )
       output.append( "Commits with no branch: %s" % len([c for c in self.values() if not c.branch]) )
       output.append( "Unlabelled heads:       %s" % len([c for c in self.values() if not c.branch and not c.child]) )
 
-      empty = [ self.branches.pop(b.name) for b in self.branches.values() if len(b) == 0 ]
-      if empty :
-          output.append( "" )
-          output.append( "Branches without commits (%s)" % len(empty) )
-          for branchname in empty :
-              output.append( " * %s" % branchname )
-
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
       output.append( "%-25s %8s   %7s" % ( 'PRIMARY' , '#commits' , '#merges' ) )
-      for branch in [ b for b in self.branches.values() if b.is_primary() ] :
+      for branch in [ b for b in self.branches if b.is_primary() ] :
           output.append( report_fmt % branch.report(True) )
 
-      releases = [ b for b in self.branches.values() if b.is_release() ]
+      releases = [ b for b in self.branches if b.is_release() ]
       if releases :
           output.append( "" )
           output.append( "%-10s %8s   %7s    (%d branches)" % ( 'RELEASE' , '#commits' , '#merges' , len(releases) ) )
@@ -351,11 +493,10 @@ class Repository ( dict ) :
               output.append( "     -----" )
               for release in releases :
                   output.append( report_fmt % release.report(True) )
-                  commits = self.branches[release]
-                  if [c for c in commits if not c.parents] :
-                      output[-1] += " *** standard commits (%d)" % len([c for c in commits if not c.parents])
+                  if release.commits() :
+                      output[-1] += " *** standard commits (%d)" % len(release.commits())
 
-      branches = [ b for b in self.branches.values() if not b.is_primary() and not b.is_release() ]
+      branches = [ b for b in self.branches if not b.is_primary() and not b.is_release() ]
       if branches :
           output.append( "" )
           output.append( "%-10s %8s   %7s   (%d branches)" % ( 'TOPIC' , '#commits' , '#merges' , len(branches) ) )
@@ -383,15 +524,37 @@ class Repository ( dict ) :
             if not commit.parents :
                 print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
             else :
-                source = self.new_branch(merged.group('source').strip("'"))
-                branches.append( ( commit.parents[0] , source ) )
-                commit.parents[0].set_branch(source)
+                if not [ b for (c,b) in branches if c == commit.parents[0] ] :
+                    source = self.new_branch(merged.group('source').strip("'").replace('origin/', ''))
+                    branches.append( ( commit.parents[0] , source ) )
+                    commit.parents[0].set_branch(source, commit)
+                else :
+                    commit.parents[0].forks.append( commit )
                 if merged.group('target') :
-                   target = self.new_branch(merged.group('target').strip("'"))
-                   branches.append( ( commit.parent , target ) )
-                   commit.parent.set_branch(target)
+                    if not [ b for (c,b) in branches if c == commit ] :
+                        target = self.new_branch(merged.group('target').strip("'"))
+                        branches.append( ( commit.parent , target ) )
+                        commit.parent.set_branch(target, commit)
+                    else :
+                        if commit.branch.name != merged.group('target').strip("'") :
+                            print "WARNING : '%s' not set on commit %s, already on '%s'" % ( merged.group('target').strip("'") , commit.sha , commit.branch )
 
     for sha,branchname in get_branches() :
+        match = [ B for B in branches if B[0] == self[sha] ]
+        if match :
+            c,b = match[0]
+            if branchname == b.name :
+                continue
+            if b.is_primary() :
+                # This case usually applies to remote branches created but with no commits pushed
+                print "WARNING : drop branch '%s' laid over '%s' at %s" % ( branchname , b.name , sha )
+                continue
+            # This case only might arise when remote tips are merged into local-only branches
+            print "WARNING : branch '%s' overwritten by '%s' at %s" % ( b.name , branchname , sha )
+            assert len(b) < 2
+            self[sha].branch = None
+            self.branches.remove(b)
+            branches.remove((c,b))
         branch = self.new_branch(branchname)
         branches.append( ( self[sha] , branch ) )
         self[sha].set_branch( branch )
@@ -401,40 +564,34 @@ class Repository ( dict ) :
         for c in commit.parents :
             if not c.branch :
                 n += 1
-                newbranch = self.new_branch("branch_%s" % n)
-                branches.append( ( c , newbranch ) )
-                c.set_branch( newbranch )
+                branch = self.new_branch("removed %s" % n)
+                branches.append( ( c , branch ) )
+                c.set_branch( branch , commit )
+            elif c.child != commit and commit not in c.forks :
+                c.forks.append( commit )
     if n : print "WARNING : %d removed branch not automatically detected" % n
 
     # All branches detected at this point
 
     for c,branch in branches :
-        c = c.parent
-        while c :
-            if not c.parent : # Initial commit detection
-                c.set_branch( branch )
-                break
-            if c.branch and not branch.is_primary() :
-                break
-            c.set_branch(branch)
-            c = c.parent
+        branch.ancestry( c )
 
-    for branch in self.branches.values() :
-        branch.sort()
+    empty = [ branch for branch in self.branches if len(branch) == 0 ]
+    if empty :
+        print "ERROR : generated empty branches %s" % ", ".join(map(str,empty))
+        for branch in empty :
+            self.branches.remove(branch)
 
-    for c in self.values() :
-        if c.parent :
-            c.parent.forks.append( c )
-        for parent in c.parents :
-            parent.forks.append( c )
-
-    for c in self.values() :
-        if len(c.forks) == 1 :
-            c.set_child( c.forks[0] )
-        elif len(c.forks) > 1 :
-            child = [ f for f in c.forks if f.branch == c.branch ]
-            if child :
-                 c.set_child( child[0] )
-            else :
-                 c.set_child( sorted(c.forks, key=lambda x : x.committer_date)[0] )
+    n = 0
+    # Running in a single loop to detect empty branches seems to produce bad side effects
+    for branch in self.branches :
+        source = branch.begin().parent
+        if source and source.child and source.child.branch == branch :
+            for commit in list(branch) :
+                    source.branch.append( commit )
+            assert len(branch) == 0
+            self.branches.remove(branch)
+            n += 1
+    if n :
+        print "WARNING : %d branches removed by concatenation with parents" % n
 

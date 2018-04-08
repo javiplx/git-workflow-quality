@@ -91,7 +91,7 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
     for origin in origins :
         # FIXME: multiple origins could be owned by the same branch ?
         shown_branches.append( origin.branch , fd )
-    shown_branches.reserved = len([b for b in repo.branches.values() if b.is_primary()])
+    shown_branches.reserved = len([b for b in repo.branches if b.is_primary()])
 
     if mode == 'date' :
         chrono_plot(repo, fd)
@@ -114,7 +114,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 pending.append(c)
                 break
             else :
-                c.render( fd , c.parents[0] )
+                c.render( fd )
         else :
             if first :
                 first = False
@@ -164,7 +164,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             if [ p for p in c.get_parents() if not p.rendered ] :
                 pending.append(c)
             else :
-                c.render( fd , c.parents[0] )
+                c.render( fd )
         else :
             c.render(fd)
 
@@ -186,7 +186,7 @@ def chrono_plot ( repo , fd=sys.stdout) :
                 shown_branches.append( c.child.branch , fd , c.branch )
         else :
             first = True
-            c.render(fd, c.parents[0])
+            c.render(fd)
             # Remove branches merged into
             for p in c.parents :
                 if p.branch in shown_branches :
@@ -197,5 +197,4 @@ def chrono_plot ( repo , fd=sys.stdout) :
             if f.branch and f.branch not in shown_branches :
                 first = True
                 shown_branches.append( f.branch , fd , c.branch )
-
 
