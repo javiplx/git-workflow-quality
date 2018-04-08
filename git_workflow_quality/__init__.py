@@ -242,7 +242,10 @@ class Branch ( list ) :
                     if commit.branch not in shown_branches :
                         shown_branches.append( commit.branch )
                         commit.branch.render( fd , self , shown_branches , True )
-                    commit.render( fd )
+                    if commit.parents and commit.parent.branch == self :
+                        commit.render( fd , switch_parents=True )
+                    else :
+                        commit.render( fd )
                     fd.write( "%s.checkout();\n" % self.as_var() )
 
         if c.child :
