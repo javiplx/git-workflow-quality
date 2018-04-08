@@ -204,6 +204,9 @@ class Branch ( list ) :
 
         sources , targets = self.relations()
         for source in sources :
+            if source.branch in [ target.branch for target in targets ] :
+                if not source.parents and source.parent.branch == self :
+                    continue
             if source.branch and source.branch not in shown_branches :
                 shown_branches.append( source.branch )
                 source.branch.render( fd , shown_branches=shown_branches , force=True )
