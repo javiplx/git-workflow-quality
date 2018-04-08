@@ -210,15 +210,18 @@ class Branch ( list ) :
                 initials.append ( source )
 
         for target in targets :
-            if target.branch and target.branch not in shown_branches :
-                # A single parent means that will be created as a fork in main loop
-                if target.parents :
-                    shown_branches.append( target.branch )
-                    target.branch.render( fd , shown_branches=shown_branches , force=True )
-                    if target.parents[0].branch == target.branch :
-                        finals.append( target.parents[0] )
-                    else :
-                        finals.append( target.parent )
+            # Only merges are handled here. Child branches will be created on loop
+            # If branch is already shown, we don't need to write any commit
+            if target.branch and target.parents and target.branch not in shown_branches :
+                shown_branches.append( target.branch )
+                target.branch.render( fd , shown_branches=shown_branches , force=True )
+                # For proper rendering, we must choose a parent in the same branch, which means render as parent of himself as fallback
+                if target.parent.branch == target.branch :
+                    finals.append( target.parent )
+                elif target.parents[0].branch == target.branch :
+                    finals.append( target.parents[0] )
+                else :
+                    finals.append( target )
 
         # All commits rendered after branch creation to avoid a single original commit
         # As we don't care about their history, we just render them as plain commits
