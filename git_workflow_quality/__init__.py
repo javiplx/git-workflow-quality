@@ -155,45 +155,49 @@ class Branch ( list ) :
         fd = open( filename , 'w' )
         fd.write( gitgraphjs.gitgraph_head )
 
-        initial = self.begin()
-        final = self.end()
         initials , finals = [] , []
 
-        commit = initial.parent
-        if commit :
-            if commit.branch and commit.branch not in shown_branches :
-                shown_branches.append( commit.branch )
-                commit.branch.render( fd , shown_branches=shown_branches , force=True )
-                initials.append( commit )
+        initial = self.begin()
+        if initial.parent :
+            shown_branches.append( initial.parent.branch )
+            initial.parent.branch.render( fd , shown_branches=shown_branches , force=True )
+            initials.append( initial.parent )
+
+        final = self.end()
+        if final.child and final.child.branch and initial.parent.branch != final.child.branch :
+            assert final.child.branch
+            # Only merges are handled here. Child branches will be created on loop
+            # If branch is already shown, we don't need to write any commit
+            if final.child.parents and final.child.branch not in shown_branches :
+                shown_branches.append( final.child.branch )
+                final.child.branch.render( fd , shown_branches=shown_branches , force=True )
+                # For proper rendering, we must choose a parent in the same branch, which means render as parent of himself as fallback
+                if final.child.parent.branch == final.child.branch :
+                    finals.append( final.child.parent )
+                elif final.child.parents[0].branch == final.child.branch :
+                    finals.append( final.child.parents[0] )
+                else :
+                    finals.append( final.child )
+
         for commit in initial.parents :
-            if commit.branch and commit.branch not in shown_branches :
+            if commit.branch not in shown_branches :
                 shown_branches.append( commit.branch )
                 commit.branch.render( fd , shown_branches=shown_branches , force=True )
                 initials.append( commit )
 
-        commit = final.child
-        if commit :
-            if commit.branch and commit.branch not in shown_branches :
-                if commit.parents or commit.parent.branch != self :
-                    shown_branches.append( commit.branch )
-                    commit.branch.render( fd , shown_branches=shown_branches , force=True )
-                    if commit.parent.branch == commit.branch :
-                        finals.append( commit.parent )
-                    elif commit.parents[0].branch == commit.branch :
-                        finals.append( commit.parents[0] )
-                    else :
-                        finals.append( commit )
         for commit in final.forks :
-            if commit.branch and commit.branch not in shown_branches :
-                if commit.parents or commit.parent.branch != self :
-                    shown_branches.append( commit.branch )
-                    commit.branch.render( fd , shown_branches=shown_branches , force=True )
-                    if commit.parent.branch == commit.branch :
-                        finals.append( commit.parent )
-                    elif commit.parents[0].branch == commit.branch :
-                        finals.append( commit.parents[0] )
-                    else :
-                        finals.append( commit )
+            # Only merges are handled here. Child branches will be created on loop
+            # If branch is already shown, we don't need to write any commit
+            if commit.branch and commit.parents and commit.branch not in shown_branches :
+                shown_branches.append( commit.branch )
+                commit.branch.render( fd , shown_branches=shown_branches , force=True )
+                # For proper rendering, we must choose a parent in the same branch, which means render as parent of himself as fallback
+                if commit.parent.branch == commit.branch :
+                    finals.append( commit.parent )
+                elif commit.parents[0].branch == commit.branch :
+                    finals.append( commit.parents[0] )
+                else :
+                    finals.append( commit )
 
         sources , targets = self.relations()
         for source in sources :
@@ -224,6 +228,8 @@ class Branch ( list ) :
             self.render( fd , shown_branches=shown_branches , force=True )
 
         for c in self.commit_list() :
+            # Ensure that ancestry line is clean
+            assert c == self.end() or c.child.branch == self
             c.render( fd )
             for commit in c.forks :
                 if commit.branch :
