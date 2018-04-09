@@ -20,7 +20,7 @@ class Commit :
         self.forks = []
         self.rendered = False
 
-    def set_branch ( self , branch , parent=None ) :
+    def set_branch ( self , branch , child=None ) :
         if branch <= self.branch :
             # self.branch has a higher weight respect to branch
             return
@@ -28,15 +28,15 @@ class Commit :
             print "WARNING : cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch )
             return
         branch.append( self )
-        if parent :
-            self.set_child( parent )
+        if child :
+            self.set_child( child )
 
-    def set_child ( self , commit ) :
-        if self.child and self.child != commit :
+    def set_child ( self , child ) :
+        if self.child and self.child != child :
             self.forks.append( self.child )
-            if commit in self.forks :
-                self.forks.remove( commit )
-        self.child = commit
+            if child in self.forks :
+                self.forks.remove( child )
+        self.child = child
 
     def get_parents ( self ) :
         parents = []
@@ -129,17 +129,17 @@ class Branch ( list ) :
         return False
 
     def ancestry ( self , commit ) :
-        parent = commit
+        child = commit
         commit = commit.parent
         while commit :
             if commit.branch and not self.is_primary() :
-                if commit.child and commit.child != parent :
-                    commit.forks.append( parent )
+                if commit.child and commit.child != child :
+                    commit.forks.append( child )
                 else :
-                    commit.child = parent
+                    commit.child = child
                 break
-            commit.set_branch( self , parent )
-            parent = commit
+            commit.set_branch( self , child )
+            child = commit
             commit = commit.parent
 
     def append ( self , commit ) :
