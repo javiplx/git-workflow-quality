@@ -519,7 +519,7 @@ class Repository ( dict ) :
 
     branches = []
     for commit in self.values() :
-        merged = re.search("Merge (pull request #(?P<id>[0-9]*) from (?P<repo>[^/]*)/|(remote-tracking )?branch )?(?P<source>[^ ]*)( (of [^ ]* )?into (?P<target>[^ ]*))?", commit.message)
+        merged = re.search("Merge (pull request #(?P<id>[0-9]*) from (?P<repo>[^/]*)/|(remote-tracking )?branch ){1}(?P<source>[^ ]*)( (of [^ ]* )?into (?P<target>[^ ]*))?", commit.message)
         if merged :
             if not commit.parents :
                 print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
