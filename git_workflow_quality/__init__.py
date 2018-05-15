@@ -289,7 +289,7 @@ class Branch ( list ) :
         return tuple(output)
 
     def as_var ( self ) :
-        return "branch_" + self.name.replace(' (2)','_duplicated').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_').replace('&', '_amp_').replace('#', '_hashtag_')
+        return "branch_" + self.name.replace(' (2)','_dup').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_').replace('&', '_amp_').replace('#', '_hashtag_').replace('[', '_bra_').replace(']', '_ket_')
 
     def render ( self , fd , parent=None , shown_branches=None , force=False ) :
         if self.is_primary() and not force :
@@ -380,6 +380,8 @@ class Repository ( dict ) :
       match = [ branch for branch in self.branches if branch.name == branchname ]
       if match :
           assert len(match) == 1
+          if match[0].is_primary() :
+              return match[0]
           return self.new_branch( "%s (2)" % branchname , orphan )
       else :
           self.branches.append( Branch(branchname, orphan) )
@@ -530,7 +532,7 @@ class Repository ( dict ) :
                 print "WARNING : false merge on %s %s" % ( commit.sha , commit.message )
             else :
                 if not [ b for (c,b) in branches if c == commit.parents[0] ] :
-                    source = self.new_branch(merged.group('source').strip("'").replace('origin/', ''))
+                    source = self.new_branch(merged.group('source').strip("'").replace('origin/', '')+" [auto]")
                     branches.append( ( commit.parents[0] , source ) )
                     commit.parents[0].set_branch(source, commit)
                 else :
