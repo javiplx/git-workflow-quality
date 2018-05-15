@@ -97,6 +97,9 @@ class Branch ( list ) :
 
     def end ( self ) :
         ends = [ c for c in list.__iter__(self) if not c.child or c.child.branch != self ]
+        if len(ends) > 1 :
+            # This just searches end on direct childs, and will not detect indirect merge-backs
+            ends = [ end for end in ends if not end.child or not end.child.branch.end().child or end.child.branch.end().child.branch != self ]
         assert len(ends) == 1
         return ends[0]
 
