@@ -75,8 +75,9 @@ class Branch ( list ) :
 
     primary = ('master', 'develop')
 
-    def __init__ ( self , branchname ) :
+    def __init__ ( self , branchname , orphan=False ) :
         self.name = branchname
+        self.orphan = orphan
         self.rendered = False
         list.__init__( self )
 
@@ -116,6 +117,9 @@ class Branch ( list ) :
 
     def is_release ( self ) :
         return self.name.startswith('release')
+
+    def is_orphan ( self ) :
+        return self.orphan
 
     def __le__ ( self , other ) :
         if not other :
@@ -369,15 +373,15 @@ class Repository ( dict ) :
               if len(self[sha].parents) > 1 :
                   raise Exception( "Octopus merges on %s from %s not handled" % ( self[sha].sha , ", ".join([c.sha for c in self[sha].parents]) ) )
 
-  def new_branch ( self , branchname ) :
+  def new_branch ( self , branchname , orphan=False ) :
       match = [ branch for branch in self.branches if branch.name == branchname ]
       if match :
           assert len(match) == 1
           if match[0].is_primary() :
               return match[0]
-          return self.new_branch( "%s (2)" % branchname )
+          return self.new_branch( "%s (2)" % branchname , orphan )
       else :
-          self.branches.append( Branch(branchname) )
+          self.branches.append( Branch(branchname, orphan) )
           return self.branches[-1]
 
   def events( self , details=False) :
@@ -468,7 +472,7 @@ class Repository ( dict ) :
       output.append( "# initial commits:      %s" % len([c for c in self.values() if not c.parent ]) )
       output.append( "Number of merges:       %s" % len([c for c in self.values() if c.parents]) )
       output.append( "Ammended commits:       %s" % len([c for c in self.values() if c.author != c.committer and not c.parents]) )
-      output.append( "Commits with no branch: %s" % len([c for c in self.values() if not c.branch]) )
+      output.append( "# orphan commits:       %s" % len([c for c in self.values() if c.branch.is_orphan()]) )
       output.append( "Unlabelled heads:       %s" % len([c for c in self.values() if not c.branch and not c.child]) )
 
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
@@ -575,6 +579,15 @@ class Repository ( dict ) :
 
     for c,branch in branches :
         branch.ancestry( c )
+
+    self.order.reverse()
+    for c in self.order :
+        if not c.branch :
+            n += 1
+            branch = self.new_branch("orphan %s" % n, True)
+            c.set_branch( branch )
+            branch.ancestry( c )
+    self.order.reverse()
 
     empty = [ branch for branch in self.branches if len(branch) == 0 ]
     if empty :
