@@ -289,7 +289,7 @@ class Branch ( list ) :
         return tuple(output)
 
     def as_var ( self ) :
-        return "branch_" + self.name.replace(' (2)','_duplicated').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_')
+        return "branch_" + self.name.replace(' (2)','_duplicated').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_').replace('&', '_amp_').replace('#', '_hashtag_')
 
     def render ( self , fd , parent=None , shown_branches=None , force=False ) :
         if self.is_primary() and not force :
