@@ -296,7 +296,7 @@ class Branch ( list ) :
             column = Branch.primary.index(self.name)
         else :
             column = shown_branches.index(self)
-        json = 'name:"%s", column:%d' % ( self , column )
+        json = 'name:"%s", column:%d' % ( str(self).replace(' (2)', ' [dup]', 1).replace(' (2)', '') , column )
         if parent :
             fd.write( 'var %s = %s.branch({%s});\n' % ( self.as_var() , parent.as_var() , json ) )
         else :
@@ -380,8 +380,6 @@ class Repository ( dict ) :
       match = [ branch for branch in self.branches if branch.name == branchname ]
       if match :
           assert len(match) == 1
-          if match[0].is_primary() :
-              return match[0]
           return self.new_branch( "%s (2)" % branchname , orphan )
       else :
           self.branches.append( Branch(branchname, orphan) )
