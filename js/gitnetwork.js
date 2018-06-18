@@ -32,18 +32,34 @@ function doMerge(x, y, X, Y) {
     }
   }
 
-context.beginPath();
-context.fillStyle = "red";
-context.strokeStyle = "red";
+function Branch(name, row) {
+  this.row = row;
+  this.path = [];
+  return this;
+  }
 
-doCommit(12,1);
-doCommit(9,1);
-doCommit(6,1);
-doCommit(3,1);
-doCommit(2,1);
+Branch.prototype.draw = function (color) {
+  context.beginPath();
+  context.fillStyle = color;
+  context.strokeStyle = color;
+  for ( i in this.path ) {
+    doCommit(this.path[i], this.row);
+    }
+  context.stroke();
+  context.closePath();
+  }
 
-context.stroke();
-context.closePath();
+branches = [];
+
+branch = new Branch('master', 1);
+branches.push( branch );
+branch.path.push( 12 );
+branch.path.push( 9 );
+branch.path.push( 6 );
+branch.path.push( 3 );
+branch.path.push( 2 );
+
+branch.draw("red");
 
 
 context.beginPath();
