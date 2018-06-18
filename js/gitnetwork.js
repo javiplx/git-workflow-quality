@@ -32,9 +32,10 @@ function doMerge(x, y, X, Y) {
     }
   }
 
-function Commit(x, X) {
+function Commit(x, X,Y) {
   this.x = x;
   this.X = X;
+  this.Y = Y;
   return this;
   }
 
@@ -49,7 +50,10 @@ Branch.prototype.draw = function (color) {
   context.fillStyle = color;
   context.strokeStyle = color;
   for ( i in this.path ) {
-    doCommit(this.path[i], this.row);
+    doCommit(this.path[i].x, this.row);
+    if ( this.path[i].X !== null && this.path[i].Y !== null ) {
+      doMerge(this.path[i].X, this.path[i].Y, this.path[i].x, this.row);
+      }
     }
   context.stroke();
   context.closePath();
@@ -59,39 +63,29 @@ branches = [];
 
 branch = new Branch('master', 1);
 branches.push( branch );
-branch.path.push( 12 );
-branch.path.push( 9 );
-branch.path.push( 6 );
-branch.path.push( 3 );
-branch.path.push( 2 );
+branch.path.push( new Commit(12) );
+branch.path.push( new Commit(9) );
+branch.path.push( new Commit(6) );
+branch.path.push( new Commit(3) );
+branch.path.push( new Commit(2) );
 
 branch.draw("red");
 
 
-context.beginPath();
-context.fillStyle = "green";
-context.strokeStyle = "green";
+branch1 = new Branch('branch_1', 2);
+branches.push( branch1 );
+branch1.path.push( new Commit(11) );
+branch1.path.push( new Commit(8, 5,3) );
+branch1.path.push( new Commit(7, 6,1) );
 
-doCommit(11,2);
-doCommit(8,2);
-doMerge(5,3,8,2);
-doCommit(7,2);
-doMerge(6,1);
-
-context.stroke();
-context.closePath();
+branch1.draw("green");
 
 
-context.beginPath();
-context.fillStyle = "blue";
-context.strokeStyle = "blue";
+branch2 = new Branch('branch_2', 3);
+branches.push( branch2 );
+branch2.path.push( new Commit(10) );
+branch2.path.push( new Commit(5) );
+branch2.path.push( new Commit(4, 3,1) );
 
-doCommit(10,3);
-doCommit(5,3);
-doCommit(4,3);
-doMerge(3,1);
-
-context.stroke();
-context.closePath();
-
+branch2.draw("blue");
 
