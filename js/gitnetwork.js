@@ -35,7 +35,11 @@ function doMerge(x, y, X, Y) {
 function Commit(x, branch, parent) {
   this.x = x;
   this.branch = branch;
-  this.parent = parent;
+  if ( parent != null ) {
+    this.parent = parent.path[parent.path.length-1];
+  } else {
+    this.parent = parent;
+    }
   return this;
   }
 
@@ -57,7 +61,7 @@ Branch.prototype.draw = function (color) {
   context.strokeStyle = color;
   for ( i in this.path ) {
     doCommit(this.path[i].x, this.row);
-    if ( typeof this.path[i].parent !== "undefined" ) {
+    if ( this.path[i].parent != null ) {
       doMerge(this.path[i].parent.x, this.path[i].parent.branch.row, this.path[i].x, this.row);
       }
     }
@@ -79,17 +83,19 @@ branches.push( branch2 );
 
 branch0.push( 12 );
 branch0.push( 9 );
-c0 = branch0.push( 6 );
-c2 = branch0.push( 3 );
-branch0.push( 2 );
+branch0.push( 6 );
 
 branch2.push( 10 );
-c1 = branch2.push( 5 );
-branch2.push( 4, c2 );
+branch2.push( 5 );
 
 branch1.push( 11 );
-branch1.push( 8, c1 );
-branch1.push( 7, c0 );
+branch1.push( 8, branch2 );
+branch1.push( 7, branch0 );
+
+branch0.push( 3 );
+branch0.push( 2 );
+
+branch2.push( 4, branch0 );
 
 
 branch0.draw("red");
