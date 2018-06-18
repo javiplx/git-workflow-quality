@@ -32,10 +32,10 @@ function doMerge(x, y, X, Y) {
     }
   }
 
-function Commit(x, branch, X) {
+function Commit(x, branch, parent) {
   this.x = x;
   this.branch = branch;
-  this.X = X;
+  this.parent = parent;
   return this;
   }
 
@@ -45,8 +45,10 @@ function Branch(name, row) {
   return this;
   }
 
-Branch.prototype.push = function (x, branch, X) {
-  this.path.push( new Commit(x, branch, X) );
+Branch.prototype.push = function (x, parent) {
+  var commit = new Commit(x, this, parent);
+  this.path.push( commit );
+  return commit;
   }
 
 Branch.prototype.draw = function (color) {
@@ -55,8 +57,8 @@ Branch.prototype.draw = function (color) {
   context.strokeStyle = color;
   for ( i in this.path ) {
     doCommit(this.path[i].x, this.row);
-    if ( typeof this.path[i].branch !== "undefined" && typeof this.path[i].X !== "undefined" ) {
-      doMerge(this.path[i].X, this.path[i].branch.row, this.path[i].x, this.row);
+    if ( typeof this.path[i].parent !== "undefined" ) {
+      doMerge(this.path[i].parent.x, this.path[i].parent.branch.row, this.path[i].x, this.row);
       }
     }
   context.stroke();
@@ -77,17 +79,17 @@ branches.push( branch2 );
 
 branch0.push( 12 );
 branch0.push( 9 );
-branch0.push( 6 );
-branch0.push( 3 );
+c0 = branch0.push( 6 );
+c2 = branch0.push( 3 );
 branch0.push( 2 );
 
-branch1.push( 11 );
-branch1.push( 8, branch2, 5 );
-branch1.push( 7, branch0, 6 );
-
 branch2.push( 10 );
-branch2.push( 5 );
-branch2.push( 4, branch0, 3 );
+c1 = branch2.push( 5 );
+branch2.push( 4, c2 );
+
+branch1.push( 11 );
+branch1.push( 8, c1 );
+branch1.push( 7, c0 );
 
 
 branch0.draw("red");
