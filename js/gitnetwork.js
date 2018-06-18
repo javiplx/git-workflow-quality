@@ -32,6 +32,12 @@ function doMerge(x, y, X, Y) {
     }
   }
 
+function Commit(x, X) {
+  this.x = x;
+  this.X = X;
+  return this;
+  }
+
 function Branch(name, row) {
   this.row = row;
   this.path = [];
