@@ -45,6 +45,10 @@ function Branch(name, row) {
   return this;
   }
 
+Branch.prototype.push = function (x, X,Y) {
+  this.path.push( new Commit(x, X,Y) );
+  }
+
 Branch.prototype.draw = function (color) {
   context.beginPath();
   context.fillStyle = color;
@@ -63,29 +67,29 @@ branches = [];
 
 branch = new Branch('master', 1);
 branches.push( branch );
-branch.path.push( new Commit(12) );
-branch.path.push( new Commit(9) );
-branch.path.push( new Commit(6) );
-branch.path.push( new Commit(3) );
-branch.path.push( new Commit(2) );
+branch.push( 12 );
+branch.push( 9 );
+branch.push( 6 );
+branch.push( 3 );
+branch.push( 2 );
 
 branch.draw("red");
 
 
 branch1 = new Branch('branch_1', 2);
 branches.push( branch1 );
-branch1.path.push( new Commit(11) );
-branch1.path.push( new Commit(8, 5,3) );
-branch1.path.push( new Commit(7, 6,1) );
+branch1.push( 11 );
+branch1.push( 8, 5,3 );
+branch1.push( 7, 6,1 );
 
 branch1.draw("green");
 
 
 branch2 = new Branch('branch_2', 3);
 branches.push( branch2 );
-branch2.path.push( new Commit(10) );
-branch2.path.push( new Commit(5) );
-branch2.path.push( new Commit(4, 3,1) );
+branch2.push( 10 );
+branch2.push( 5 );
+branch2.push( 4, 3,1 );
 
 branch2.draw("blue");
 
