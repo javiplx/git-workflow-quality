@@ -8,7 +8,7 @@ head = """<!DOCTYPE html>
 <canvas id="gitNetwork"></canvas>
 <script src="js/gitnetwork.js"></script>
 <script type="text/javascript">
-var gitnetwork = new GitNetwork();
+var gitgraph = new GitNetwork();
 """
 
 tail = """</script>
@@ -27,7 +27,7 @@ def graph ( repo , filename='commits.html' ) :
 
     n = len(repo)
     for branch in tails :
-        fd.write( 'var %s = gitnetwork.branch("%s", %d);\n' % ( branch.as_var() , branch, tails.index(branch)+1 ) )
+        branch.render( fd , shown_branches=tails , force=True )
         for commit in branch.commits() :
             fd.write( "%s.push( %d );\n" % ( branch.as_var() , n ) )
             n -= 1

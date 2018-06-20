@@ -50,15 +50,17 @@ function Commit(x, branch, parent) {
   return this;
   }
 
-GitNetwork.prototype.branch = function (name, row) {
-  var branch = new Branch(name, row, this.context);
+GitNetwork.prototype.branch = function (options) {
+  options.context = this.context;
+  var branch = new Branch(options);
   this.branches.push(branch);
   return branch;
   }
 
-function Branch(name, row, context) {
-  this.context = context;
-  this.row = row;
+function Branch(options) {
+  this.name = options.name;
+  this.context = options.context;
+  this.row = options.column + 1;
   this.path = [];
   return this;
   }
