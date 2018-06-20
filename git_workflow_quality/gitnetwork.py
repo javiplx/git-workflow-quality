@@ -2,14 +2,13 @@
 
 import sys
 
-head = """
-<!DOCTYPE html>
+head = """<!DOCTYPE html>
 <html>
 <body>
 <canvas id="gitNetwork"></canvas>
 <script src="js/gitnetwork.js"></script>
 <script type="text/javascript">
-branches = [];
+var gitnetwork = new GitNetwork();
 """
 
 tail = """</script>
@@ -28,8 +27,7 @@ def graph ( repo , filename='commits.html' ) :
 
     n = len(repo)
     for branch in tails :
-        fd.write( '%s = new Branch("%s", %d);\n' % ( branch.as_var() , branch, tails.index(branch)+1 ) )
-        fd.write( "branches.push( %s );\n" % branch.as_var() )
+        fd.write( 'var %s = gitnetwork.branch("%s", %d);\n' % ( branch.as_var() , branch, tails.index(branch)+1 ) )
         for commit in branch.commits() :
             fd.write( "%s.push( %d );\n" % ( branch.as_var() , n ) )
             n -= 1
