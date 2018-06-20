@@ -1,5 +1,6 @@
 
 import gitgraphjs
+import gitnetwork
 
 import subprocess
 import re

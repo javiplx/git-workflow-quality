@@ -69,36 +69,3 @@ Branch.prototype.draw = function (color) {
   context.closePath();
   }
 
-branches = [];
-
-branch0 = new Branch('master', 1);
-branches.push( branch0 );
-
-branch1 = new Branch('branch_1', 2);
-branches.push( branch1 );
-
-branch2 = new Branch('branch_2', 3);
-branches.push( branch2 );
-
-
-branch0.push( 12 );
-branch0.push( 9 );
-branch0.push( 6 );
-
-branch2.push( 10 );
-branch2.push( 5 );
-
-branch1.push( 11 );
-branch1.push( 8, branch2 );
-branch1.push( 7, branch0 );
-
-branch0.push( 3 );
-branch0.push( 2 );
-
-branch2.push( 4, branch0 );
-
-
-branch0.draw("red");
-branch1.draw("green");
-branch2.draw("blue");
-
