@@ -15,6 +15,10 @@ function GitNetwork(options) {
   this.branches = [];
 
   }
+GitNetwork.prototype.resize = function (x, y) {
+  this.canvas.width = (x+1) * lineSize;
+  this.canvas.height = (y+1) * lineSize;
+  }
 
 Branch.prototype.doParent = function (x, y) {
   this.context.lineTo(x*lineSize, y*lineSize);

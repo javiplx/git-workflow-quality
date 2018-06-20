@@ -26,6 +26,7 @@ def graph ( repo , filename='commits.html' ) :
     tails = [ b for b in repo.branches if b.target() == '<Final>' ]
 
     n = len(repo)
+    fd.write( "gitgraph.resize(%d, %d);\n" % ( n+1 , len(tails)+1 ) )
     for branch in tails :
         branch.render( fd , shown_branches=tails , force=True )
         for commit in branch.commits() :
