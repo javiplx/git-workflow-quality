@@ -157,6 +157,14 @@ class Branch ( list ) :
         yield this
         raise StopIteration()
 
+    def backward_commits ( self ) :
+        this = self.end()
+        while this.parent and this.parent.branch == self :
+            yield this
+            this = this.parent
+        yield this
+        raise StopIteration()
+
     def __str__ ( self ) :
         return self.name
 
