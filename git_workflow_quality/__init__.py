@@ -81,6 +81,9 @@ class Branch ( list ) :
         self.rendered = False
         list.__init__( self )
 
+    def __hash__ ( self ) :
+        return self.name.__hash__()
+
     def commits ( self ) :
         return [c for c in list.__iter__(self) if not c.parents]
 

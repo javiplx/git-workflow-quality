@@ -2,7 +2,9 @@
 
 import sys
 
-head = """<!DOCTYPE html>
+class canvas ( dict ) :
+
+    head = """<!DOCTYPE html>
 <html>
 <body>
 <canvas id="gitNetwork"></canvas>
@@ -11,36 +13,43 @@ head = """<!DOCTYPE html>
 var gitgraph = new GitNetwork();
 """
 
-tail = """</script>
+    tail = """</script>
 </body>
 </html>
 """
 
+    def __init__ ( self , branches , filename='commits.html' ) :
+        self.fd = open( filename , 'w' )
+        self.fd.write( self.head )
+        dict.__init__( self )
+        for branch in branches :
+            dict.__setitem__( self , branch , branch.end() )
+            self.fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d});\n' % ( branch.as_var() , branch , len(self) ) )
+
+    def resize ( self , n ) :
+        self.ptr = n
+        self.fd.write( "gitgraph.resize(%d, %d);\n" % ( self.ptr+1 , len(self)+1 ) )
+
+    def close ( self ) :
+        for branch in self :
+            self.fd.write( "%s.push( %d );\n" % ( branch.as_var() , self.ptr ) )
+            self[branch].rendered = True
+            self.fd.write( '%s.draw("red");\n' % branch.as_var() )
+        self.fd.write( self.tail )
+        self.fd.close()
+
 
 def graph ( repo , filename='commits.html' ) :
 
-    fd = open( filename , 'w' )
-
-    fd.write( head )
-
-    shown_branches = [ b for b in repo.branches if b.target() == '<Final>' ]
-
-    for branch in shown_branches :
-        branch.render( fd , shown_branches=shown_branches , force=True )
-
-    n = len(repo)
-    fd.write( "gitgraph.resize(%d, %d);\n" % ( n+1 , len(shown_branches)+1 ) )
+    shown_branches = canvas( [ b for b in repo.branches if b.target() == '<Final>' ] , filename )
+    shown_branches.resize( len(repo) )
 
     tails = [ b.end() for b in shown_branches ]
     while tails :
         commit = tails.pop(0)
-        backward_plot( repo , commit , tails , fd )
+        backward_plot( repo , commit , tails , shown_branches.fd )
 
-    for branch in shown_branches :
-        fd.write( '%s.draw("red");\n' % branch.as_var() )
-
-    fd.write( tail )
-    fd.close()
+    shown_branches.close()
 
 def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
     while commit :
