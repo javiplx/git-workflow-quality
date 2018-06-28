@@ -32,6 +32,7 @@ var gitgraph = new GitNetwork();
 
     def close ( self ) :
         for branch in self :
+            if not self[branch] : continue
             self.fd.write( "%s.push( %d );\n" % ( branch.as_var() , self.ptr ) )
             self[branch].rendered = True
             self.fd.write( '%s.draw("red");\n' % branch.as_var() )
@@ -44,37 +45,21 @@ def graph ( repo , filename='commits.html' ) :
     shown_branches = canvas( [ b for b in repo.branches if b.target() == '<Final>' ] , filename )
     shown_branches.resize( len(repo) )
 
-    tails = [ b.end() for b in shown_branches ]
-    while tails :
-        commit = tails.pop(0)
-        backward_plot( repo , commit , tails , shown_branches.fd )
+    for commit in shown_branches.values() :
+        backward_plot( repo , commit , shown_branches , shown_branches.fd )
 
     shown_branches.close()
 
 def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
     while commit :
-        for c in commit.parents :
-            if c.rendered :
-                fd.write( "%s.push( %d , %s );\n" % ( commit.branch.as_var() , n , c.branch.as_var() ) )
-                commit.rendered = True
-                n -= 1
-            else :
-                pending.append( commit )
-                return
-        else:
-            for c in commit.forks :
-                if c.rendered :
-                    fd.write( "%s.push( %d , %s );\n" % ( commit.branch.as_var() , n , c.branch.as_var() ) )
-                    commit.rendered = True
-                    n -= 1
-                else :
-                    pending.append( commit )
-                    return
-            else:
-                fd.write( "%s.push( %d );\n" % ( commit.branch.as_var() , n ) )
-                commit.rendered = True
-                n -= 1
+        if commit.forks : return
+        fd.write( "%s.push( %d );\n" % ( commit.branch.as_var() , pending.ptr ) )
+        commit.rendered = True
+        pending.ptr -= 1
         if commit.branch != commit.parent.branch :
+            fd.write( '%s.draw("green");\n' % commit.branch.as_var() )
+            pending[commit.branch] = None
             return
         commit = commit.parent
+        pending[commit.branch] = commit
 
