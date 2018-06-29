@@ -45,15 +45,14 @@ def graph ( repo , filename='commits.html' ) :
     shown_branches = canvas( [ b for b in repo.branches if b.target() == '<Final>' ] , filename )
     shown_branches.resize( len(repo) )
 
-    for commit in shown_branches.values() :
-        backward_plot( repo , commit , shown_branches , shown_branches.fd )
-
-    for commit in shown_branches.values() :
-        backward_plot( repo , commit , shown_branches , shown_branches.fd )
+    while [ b for b in shown_branches.values() if b ] :
+        for commit in [ b for b in shown_branches.values() if b ] :
+            backward_plot( repo , commit , shown_branches , shown_branches.fd )
 
     shown_branches.close()
 
 def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
+
     while commit :
 
         if [ c for c in commit.forks if c.branch and not c.rendered ] : return
@@ -74,13 +73,19 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
                 fd.write( "%s.push( %d , %s );\n" % ( c.branch.as_var() , pending.ptr+3 , commit.branch.as_var() ) )
                 c.rendered = True
                 if [ b for b in c.get_parents() if not b.rendered ] : continue
-                fd.write( '%s.draw("blue");\n' % c.branch.as_var() )
+                if c.branch.begin() == c :
+                    fd.write( '%s.draw("green");\n' % c.branch.as_var() )
+                    pending[c.branch] = None
+                else :
+                    pending[c.branch] = c.parent
 
-        if commit.branch != commit.parent.branch :
-            fd.write( '%s.draw("green");\n' % commit.branch.as_var() )
-            pending[commit.branch] = None
+        if not commit.parent :
+            fd.write( '%s.draw("cyan");\n' % commit.branch.as_var() )
+        elif commit.branch != commit.parent.branch :
+            if [ c for c in commit.get_parents() if not c.rendered ] : return
+            if pending[commit.parent.branch] and commit.parent not in pending.values() :
+                fd.write( '%s.draw("blue");\n' % commit.parent.branch.as_var() )
             return
 
+        pending[commit.branch] = commit.parent
         commit = commit.parent
-        pending[commit.branch] = commit
-
