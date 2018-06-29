@@ -48,6 +48,9 @@ def graph ( repo , filename='commits.html' ) :
     for commit in shown_branches.values() :
         backward_plot( repo , commit , shown_branches , shown_branches.fd )
 
+    for commit in shown_branches.values() :
+        backward_plot( repo , commit , shown_branches , shown_branches.fd )
+
     shown_branches.close()
 
 def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
@@ -63,6 +66,15 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
         fd.write( "%s.push( %d );\n" % ( commit.branch.as_var() , pending.ptr ) )
         commit.rendered = True
         pending.ptr -= 1
+
+        children = [ b for b in commit.forks if b.branch ]
+        if children :
+            pending.ptr -= 1
+            for c in children :
+                fd.write( "%s.push( %d , %s );\n" % ( c.branch.as_var() , pending.ptr+3 , commit.branch.as_var() ) )
+                c.rendered = True
+                if [ b for b in c.get_parents() if not b.rendered ] : continue
+                fd.write( '%s.draw("blue");\n' % c.branch.as_var() )
 
         if commit.branch != commit.parent.branch :
             fd.write( '%s.draw("green");\n' % commit.branch.as_var() )

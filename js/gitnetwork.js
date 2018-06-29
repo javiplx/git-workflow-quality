@@ -82,7 +82,7 @@ Branch.prototype.draw = function (color) {
   for ( i in this.path ) {
     this.doCommit(this.path[i].x, this.row);
     if ( this.path[i].parent != null ) {
-      doMerge(this.path[i].parent.x, this.path[i].parent.branch.row, this.path[i].x, this.row);
+      this.doMerge(this.path[i].parent.x, this.path[i].parent.branch.row, this.path[i].x, this.row);
       }
     }
   this.context.stroke();
