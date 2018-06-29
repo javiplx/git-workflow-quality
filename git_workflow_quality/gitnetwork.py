@@ -52,14 +52,23 @@ def graph ( repo , filename='commits.html' ) :
 
 def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
     while commit :
-        if commit.forks : return
+
+        if [ c for c in commit.forks if c.branch and not c.rendered ] : return
+
+        for c in commit.parents :
+            if not c.branch in pending.keys() :
+                dict.__setitem__( pending , c.branch , c )
+                fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d});\n' % ( c.branch.as_var() , c.branch , len(pending) ) )
+
         fd.write( "%s.push( %d );\n" % ( commit.branch.as_var() , pending.ptr ) )
         commit.rendered = True
         pending.ptr -= 1
+
         if commit.branch != commit.parent.branch :
             fd.write( '%s.draw("green");\n' % commit.branch.as_var() )
             pending[commit.branch] = None
             return
+
         commit = commit.parent
         pending[commit.branch] = commit
 
