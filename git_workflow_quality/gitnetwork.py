@@ -56,18 +56,23 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
     while commit :
 
         if [ c for c in commit.get_childs(False) if not c.rendered ] : return
+        for c in commit.get_parents(False) :
+            if c.branch not in pending :
+                dict.__setitem__( pending , c.branch , c.branch.end() )
+                fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d});\n' % ( c.branch.as_var() , c.branch , len(pending) ) )
         if [ c for c in commit.get_parents(False) if c not in pending.values() ] : return
 
+
         for c in commit.get_parents(False) :
-            for b in c.get_childs(False) :
-                if commit.branch == b.branch : continue
-                if not b.rendered: return
-        for c in commit.get_parents(False) :
-            dict.__setitem__( pending , c.branch , c.parent )
-            fd.write( "%s.push( %d );\n" % ( c.branch.as_var() , pending.ptr-1 ) )
-            c.rendered = True
+            if [ b for b in c.get_childs() if commit.branch != b.branch and not b.rendered ] :
+                fd.write( '%s.draw("blue");\n' % b.branch.as_var() )
+            if [ b for b in c.get_childs() if commit.branch != b.branch and not b.rendered ] : return
 
         if commit.get_parents(False) :
+            for c in commit.get_parents(False) :
+                fd.write( "%s.push( %d );\n" % ( c.branch.as_var() , pending.ptr-1 ) )
+                c.rendered = True
+                pending[c.branch] = c.parent
             fd.write( "%s.push( %d , %s );\n" % ( commit.branch.as_var() , pending.ptr, c.branch.as_var() ) )
         else :
             fd.write( "%s.push( %d );\n" % ( commit.branch.as_var() , pending.ptr ) )
