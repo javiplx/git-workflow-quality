@@ -55,37 +55,36 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
 
     while commit :
 
-        if [ c for c in commit.forks if c.branch and not c.rendered ] : return
+        if [ c for c in commit.get_childs(False) if not c.rendered ] : return
+        if [ c for c in commit.get_parents(False) if c not in pending.values() ] : return
 
-        for c in commit.parents :
-            if not c.branch in pending.keys() :
-                dict.__setitem__( pending , c.branch , c )
-                fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d});\n' % ( c.branch.as_var() , c.branch , len(pending) ) )
+        for c in commit.get_parents(False) :
+            for b in c.get_childs(False) :
+                if commit.branch == b.branch : continue
+                if not b.rendered: return
+        for c in commit.get_parents(False) :
+            dict.__setitem__( pending , c.branch , c.parent )
+            fd.write( "%s.push( %d );\n" % ( c.branch.as_var() , pending.ptr-1 ) )
+            c.rendered = True
 
-        fd.write( "%s.push( %d );\n" % ( commit.branch.as_var() , pending.ptr ) )
+        if commit.get_parents(False) :
+            fd.write( "%s.push( %d , %s );\n" % ( commit.branch.as_var() , pending.ptr, c.branch.as_var() ) )
+        else :
+            fd.write( "%s.push( %d );\n" % ( commit.branch.as_var() , pending.ptr ) )
         commit.rendered = True
-        pending.ptr -= 1
 
-        children = [ b for b in commit.forks if b.branch ]
-        if children :
+        for c in commit.get_parents(False) :
             pending.ptr -= 1
-            for c in children :
-                fd.write( "%s.push( %d , %s );\n" % ( c.branch.as_var() , pending.ptr+3 , commit.branch.as_var() ) )
-                c.rendered = True
-                if [ b for b in c.get_parents() if not b.rendered ] : continue
-                if c.branch.begin() == c :
-                    fd.write( '%s.draw("green");\n' % c.branch.as_var() )
-                    pending[c.branch] = None
-                else :
-                    pending[c.branch] = c.parent
+        pending.ptr -= 1
 
         if not commit.parent :
             fd.write( '%s.draw("cyan");\n' % commit.branch.as_var() )
         elif commit.branch != commit.parent.branch :
             if [ c for c in commit.get_parents() if not c.rendered ] : return
-            if pending[commit.parent.branch] and commit.parent not in pending.values() :
-                fd.write( '%s.draw("blue");\n' % commit.parent.branch.as_var() )
-            return
+            fd.write( '%s.draw("green");\n' % commit.branch.as_var() )
+            pending[commit.branch] = None
+            break
 
         pending[commit.branch] = commit.parent
         commit = commit.parent
+

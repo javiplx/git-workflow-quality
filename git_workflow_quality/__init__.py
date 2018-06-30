@@ -39,18 +39,21 @@ class Commit :
                 self.forks.remove( child )
         self.child = child
 
-    def get_parents ( self ) :
+    def get_parents ( self , full=True ) :
         parents = []
         if self.parent :
+          if full or self.branch != self.parent.branch :
             parents.append( self.parent )
         parents.extend( self.parents )
         return parents
 
-    def get_childs ( self ) :
+    def get_childs ( self , full=True ) :
         childs = []
         if self.child :
+         if self.child.branch :
+          if full or self.branch != self.child.branch :
             childs.append( self.child )
-        childs.extend( self.forks )
+        childs.extend( [ c for c in self.forks if c.branch ] )
         return childs
 
     def render ( self , fd , render_merge=True , switch_parents=False ) :
