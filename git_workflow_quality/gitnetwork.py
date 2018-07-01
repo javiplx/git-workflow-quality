@@ -23,19 +23,36 @@ var gitgraph = new GitNetwork();
         self.fd.write( self.head )
         dict.__init__( self )
         for branch in branches :
-            dict.__setitem__( self , branch , branch.end() )
-            self.fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d});\n' % ( branch.as_var() , branch , len(self) ) )
+            self.push( branch )
+
+    def push ( self , branch ) :
+        dict.__setitem__( self , branch , branch.end() )
+        self.fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d});\n' % ( branch.as_var() , branch , len(self) ) )
 
     def resize ( self , n ) :
         self.ptr = n
         self.fd.write( "gitgraph.resize(%d, %d);\n" % ( self.ptr+1 , len(self)+1 ) )
 
-    def close ( self ) :
+    def unfinished ( self ) :
+        unknowns = []
+
         for branch in self :
             if not self[branch] : continue
-            self.fd.write( "%s.push( %d );\n" % ( branch.as_var() , self.ptr ) )
+            unknowns.extend( [ c.branch for c in self[branch].get_childs(False) if c.branch not in self ] )
+            childrens = [ c.branch.name for c in self[branch].get_childs(False) if not self.get(c.branch) ]
+            self.fd.write( '%s.push(["%s"]);\n' % ( branch.as_var() , '","'.join(childrens) ) )
             self[branch].rendered = True
             self.fd.write( '%s.draw("red");\n' % branch.as_var() )
+            self[branch] = None
+
+        for branch in unknowns :
+            self.push( branch )
+
+        return unknowns
+
+    def close ( self ) :
+        while self.unfinished() :
+            self.fd.write( "gitgraph.pointer -= 10;\n" )
         self.fd.write( self.tail )
         self.fd.close()
 
@@ -56,36 +73,21 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
     while commit :
 
         if [ c for c in commit.get_childs(False) if not c.rendered ] : return
-        for c in commit.get_parents(False) :
-            if c.branch not in pending :
-                dict.__setitem__( pending , c.branch , c.branch.end() )
-                fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d});\n' % ( c.branch.as_var() , c.branch , len(pending) ) )
-        if [ c for c in commit.get_parents(False) if c not in pending.values() ] : return
 
-
-        for c in commit.get_parents(False) :
-            if [ b for b in c.get_childs() if commit.branch != b.branch and not b.rendered ] :
-                fd.write( '%s.draw("blue");\n' % b.branch.as_var() )
-            if [ b for b in c.get_childs() if commit.branch != b.branch and not b.rendered ] : return
-
-        if commit.get_parents(False) :
-            for c in commit.get_parents(False) :
-                fd.write( "%s.push( %d );\n" % ( c.branch.as_var() , pending.ptr-1 ) )
-                c.rendered = True
-                pending[c.branch] = c.parent
-            fd.write( "%s.push( %d , %s );\n" % ( commit.branch.as_var() , pending.ptr, c.branch.as_var() ) )
+        if commit.get_childs(False) :
+            childrens = [ c.branch for c in commit.get_childs(False) ]
+            fd.write( '%s.push(["%s"]);\n' % ( commit.branch.as_var() , '","'.join(map(str,childrens)) ) )
         else :
-            fd.write( "%s.push( %d );\n" % ( commit.branch.as_var() , pending.ptr ) )
+            fd.write( "%s.push([]);\n" % commit.branch.as_var() )
         commit.rendered = True
 
         for c in commit.get_parents(False) :
-            pending.ptr -= 1
-        pending.ptr -= 1
+            if c.branch not in pending :
+                pending.push( c.branch )
 
         if not commit.parent :
             fd.write( '%s.draw("cyan");\n' % commit.branch.as_var() )
         elif commit.branch != commit.parent.branch :
-            if [ c for c in commit.get_parents() if not c.rendered ] : return
             fd.write( '%s.draw("green");\n' % commit.branch.as_var() )
             pending[commit.branch] = None
             break
