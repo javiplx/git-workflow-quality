@@ -91,9 +91,9 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
                 pending.push( c.branch )
 
         if not commit.parent :
-            fd.write( '%s.draw("cyan");\n' % commit.branch.as_var() )
+            fd.write( '%s.draw();\n' % commit.branch.as_var() )
         elif commit.branch != commit.parent.branch :
-            fd.write( '%s.draw("green");\n' % commit.branch.as_var() )
+            fd.write( '%s.draw();\n' % commit.branch.as_var() )
             pending[commit.branch] = None
             break
 

@@ -15,6 +15,8 @@ function GitNetwork(options) {
   this.branches = [];
   this.pointer = -1;
 
+  this.palette = ["black", "blue", "green", "magenta", "gold", "darkblue", "orange"];
+
   }
 
 GitNetwork.prototype.resize = function (x, y) {
@@ -58,6 +60,7 @@ function Branch(options) {
   this.context = options.context;
   this.path = [];
   this.column = -1;
+  this.color = this.graph.palette[(options.column-1)%this.graph.palette.length];
   return this;
   }
 
@@ -68,6 +71,9 @@ Branch.prototype.push = function (parents) {
   }
 
 Branch.prototype.draw = function (color) {
+  if ( color == null ) {
+    color = this.color
+    }
   this.context.beginPath();
   this.context.fillStyle = color;
   this.context.strokeStyle = color;
