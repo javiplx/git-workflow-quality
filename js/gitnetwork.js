@@ -83,6 +83,7 @@ Branch.prototype.draw = function (color) {
       this.doJoin(commit.x, commit.branch.row, this.path[i].x, this.row);
       }
     }
+  this.context.fillText(this.name, (this.path[0].x+0.5)*lineSize, (this.row+0.15)*lineSize);
   this.context.stroke();
   this.context.closePath();
   }
