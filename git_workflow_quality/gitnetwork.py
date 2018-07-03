@@ -70,6 +70,7 @@ def graph ( repo , filename='commits.html' ) :
 
 def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
 
+    first = True
     while commit :
 
         if [ c for c in commit.get_childs(False) if not c.rendered ] : return
@@ -77,8 +78,12 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
         if commit.get_childs(False) :
             childrens = [ c.branch for c in commit.get_childs(False) ]
             fd.write( '%s.push(["%s"]);\n' % ( commit.branch.as_var() , '","'.join(map(str,childrens)) ) )
+            first = True
         else :
-            fd.write( "%s.push([]);\n" % commit.branch.as_var() )
+            if first or commit.branch.begin() == commit :
+                fd.write( "%s.push([]);\n" % commit.branch.as_var() )
+            if commit.branch.target() != commit :
+                first = False
         commit.rendered = True
 
         for c in commit.get_parents(False) :
