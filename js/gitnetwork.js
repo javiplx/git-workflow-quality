@@ -36,20 +36,13 @@ GitNetwork.prototype.branch = function (options) {
   }
 
 
-function Commit(branch, parents) {
+function Commit(branch, sha, parents) {
   this.branch = branch; // maybe useless ???
+  this.sha = sha;
   this.parents = branch.graph.branches.filter( function(x) { return parents.includes( x.name ) } ).map( function(x) { return x.path[x.path.length-1]; });
   this.x = branch.graph.pointer;
   branch.graph.pointer--;
   return this;
-  }
-
-Branch.prototype.doCommit = function (x, y) {
-  this.doParent(x, y);
-  this.context.moveTo(x*lineSize+dotSize, y*lineSize);
-  this.context.arc(x*lineSize, y*lineSize, dotSize, 0, 2 * Math.PI, false);
-  this.doRewind(x, y);
-  this.context.fill();
   }
 
 
@@ -64,8 +57,8 @@ function Branch(options) {
   return this;
   }
 
-Branch.prototype.push = function (parents) {
-  var commit = new Commit(this, parents);
+Branch.prototype.push = function (sha, parents) {
+  var commit = new Commit(this, sha, parents);
   this.path.push( commit );
   return commit;
   }
@@ -78,7 +71,7 @@ Branch.prototype.draw = function (color) {
   this.context.fillStyle = color;
   this.context.strokeStyle = color;
   for ( i in this.path ) {
-    this.doCommit(this.path[i].x, this.row);
+    this.doCommit(this.path[i], this.row);
     for ( commit of this.path[i].parents ) {
       this.doJoin(commit.x, commit.branch.row, this.path[i].x, this.row);
       }
@@ -96,12 +89,18 @@ Branch.prototype.doRewind = function (x, y) {
   this.context.moveTo(x*lineSize, y*lineSize);
   }
 
-Branch.prototype.doCommit = function (x, y) {
-  this.doParent(x, y);
-  this.context.moveTo(x*lineSize+dotSize, y*lineSize);
-  this.context.arc(x*lineSize, y*lineSize, dotSize, 0, 2 * Math.PI, false);
-  this.doRewind(x, y);
+Branch.prototype.doCommit = function (commit, y) {
+  this.doParent(commit.x, y);
+  this.context.moveTo(commit.x*lineSize+dotSize, y*lineSize);
+  this.context.arc(commit.x*lineSize, y*lineSize, dotSize, 0, 2 * Math.PI, false);
+  this.doRewind(commit.x, y);
   this.context.fill();
+  this.context.save();
+  this.context.translate(commit.x*lineSize, y*lineSize);
+  this.context.rotate(-Math.PI / 4);
+  this.context.translate(-commit.x*lineSize, -y*lineSize);
+  this.context.fillText(commit.sha, (commit.x+0.25)*lineSize, (y-0.25)*lineSize);
+  this.context.restore();
   }
 
 Branch.prototype.doJoin = function (x, y, X, Y) {
