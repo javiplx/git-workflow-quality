@@ -39,8 +39,8 @@ var gitgraph = new GitNetwork();
         for branch in self :
             if not self[branch] : continue
             unknowns.extend( [ c.branch for c in self[branch].get_childs(False) if c.branch not in self ] )
-            childrens = [ c.branch.name for c in self[branch].get_childs(False) if not self.get(c.branch) ]
-            self.fd.write( '%s.push("%s",["%s"]);\n' % ( branch.as_var() , branch.begin().sha[:8] , '","'.join(childrens) ) )
+            childrens = [ c for c in self[branch].get_childs(False) if not self.get(c.branch) ]
+            self.fd.write( '%s.push("%s",["%s"]);\n' % ( branch.as_var() , branch.begin().sha[:8] , '","'.join( [ c.sha[:8] for c in childrens ] ) ) )
             self[branch].rendered = True
             self.fd.write( '%s.draw("red");\n' % branch.as_var() )
             self[branch] = None
@@ -76,8 +76,7 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
         if [ c for c in commit.get_childs(False) if not c.rendered ] : return
 
         if commit.get_childs(False) :
-            childrens = [ c.branch for c in commit.get_childs(False) ]
-            fd.write( '%s.push("%s",["%s"]);\n' % ( commit.branch.as_var() , commit.sha[:8] , '","'.join(map(str,childrens)) ) )
+            fd.write( '%s.push("%s",["%s"]);\n' % ( commit.branch.as_var() , commit.sha[:8] , '","'.join( [ c.sha[:8] for c in commit.get_childs(False) ] ) ) )
             first = True
         else :
             if first or commit.branch.begin() == commit  or True :

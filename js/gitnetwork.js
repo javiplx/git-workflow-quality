@@ -39,7 +39,7 @@ GitNetwork.prototype.branch = function (options) {
 function Commit(branch, sha, parents) {
   this.branch = branch; // maybe useless ???
   this.sha = sha;
-  this.parents = branch.graph.branches.filter( function(x) { return parents.includes( x.name ) } ).map( function(x) { return x.path[x.path.length-1]; });
+  this.parents = parents.map( function(sha) { return branch.graph.branches.filter( function(x) { return x.has(sha) } )[0].get(sha); } );
   this.x = branch.graph.pointer;
   branch.graph.pointer--;
   return this;
@@ -55,6 +55,16 @@ function Branch(options) {
   this.column = -1;
   this.color = this.graph.palette[(options.column-1)%this.graph.palette.length];
   return this;
+  }
+
+Branch.prototype.has = function (sha) {
+  var commit = this.path.filter( function(c) { return c.sha == sha } );
+  return commit.length > 0;
+  }
+
+Branch.prototype.get = function (sha) {
+  var commit = this.path.filter( function(c) { return c.sha == sha } );
+  return commit[0];
   }
 
 Branch.prototype.push = function (sha, parents) {
