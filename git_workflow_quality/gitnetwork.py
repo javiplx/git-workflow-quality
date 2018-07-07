@@ -10,7 +10,7 @@ class canvas ( dict ) :
 <canvas id="gitNetwork"></canvas>
 <script src="js/gitnetwork.js"></script>
 <script type="text/javascript">
-var gitgraph = new GitNetwork();
+var gitgraph = new GitNetwork(%d);
 """
 
     tail = """</script>
@@ -18,20 +18,17 @@ var gitgraph = new GitNetwork();
 </html>
 """
 
-    def __init__ ( self , branches , filename='commits.html' ) :
+    def __init__ ( self , repo , filename='commits.html' ) :
         self.fd = open( filename , 'w' )
-        self.fd.write( self.head )
+        self.fd.write( self.head % len(repo) )
         dict.__init__( self )
-        for branch in branches :
+        for branch in repo.branches :
+            if branch.target() != '<Final>' : continue
             self.push( branch )
 
     def push ( self , branch ) :
         dict.__setitem__( self , branch , branch.end() )
         self.fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d});\n' % ( branch.as_var() , branch , len(self) ) )
-
-    def resize ( self , n ) :
-        self.ptr = n
-        self.fd.write( "gitgraph.resize(%d, %d);\n" % ( self.ptr+1 , len(self)+1 ) )
 
     def unfinished ( self ) :
         unknowns = []
@@ -60,8 +57,7 @@ var gitgraph = new GitNetwork();
 
 def graph ( repo , filename='commits.html' ) :
 
-    shown_branches = canvas( [ b for b in repo.branches if b.target() == '<Final>' ] , filename )
-    shown_branches.resize( len(repo) )
+    shown_branches = canvas( repo , filename )
 
     while [ b for b in shown_branches.values() if b ] :
         for commit in [ b for b in shown_branches.values() if b ] :

@@ -3,32 +3,31 @@
 dotSize = 4;
 lineSize = 20;
 
-function GitNetwork(options) {
+function GitNetwork(length) {
 
   this.canvas = document.getElementById('gitNetwork');
   this.context = this.canvas.getContext("2d");
 
-  // 12 x 3
-  this.canvas.width = (12+1) * lineSize;
-  this.canvas.height = (13+1) * lineSize;
-
   this.branches = [];
-  this.pointer = -1;
+  this.length = length;
+  this.pointer = length;
 
   this.palette = ["black", "blue", "green", "magenta", "gold", "darkblue", "orange"];
 
   }
 
-GitNetwork.prototype.draw = function () {
-  this.branches.map( function(b) { b.draw() } );
+GitNetwork.prototype.xpos = function (x) {
+  return ( x - this.pointer ) * lineSize;
   }
 
-GitNetwork.prototype.resize = function (x, y) {
-  this.canvas.width = (x+1) * lineSize;
-  this.canvas.height = (y+1) * lineSize;
-  if ( this.pointer < 0 ) {
-    this.pointer = x;
-    }
+GitNetwork.prototype.ypos = function (y) {
+  return ( y + 1 ) * lineSize;
+  }
+
+GitNetwork.prototype.draw = function () {
+  this.canvas.width = ( this.length - this.pointer + 6 ) * lineSize;
+  this.canvas.height = ( this.branches.length + 3 ) * lineSize;
+  this.branches.map( function(b) { b.draw() } );
   }
 
 GitNetwork.prototype.branch = function (options) {
@@ -41,6 +40,7 @@ GitNetwork.prototype.branch = function (options) {
 
 
 function Commit(branch, sha, parents) {
+  this.graph = branch.graph;
   this.sha = sha;
   this.parents = parents.map( function(sha) { return branch.graph.branches.filter( function(x) { return x.has(sha) } )[0].get(sha); } );
   this.x = branch.graph.pointer;
@@ -51,25 +51,31 @@ function Commit(branch, sha, parents) {
   }
 
 Commit.prototype.draw = function () {
+  x = this.graph.xpos(this.x);
+  y = this.graph.ypos(this.y);
   this.doParent();
-  this.context.moveTo(this.x*lineSize+dotSize, this.y*lineSize);
-  this.context.arc(this.x*lineSize, this.y*lineSize, dotSize, 0, 2 * Math.PI, false);
+  this.context.moveTo(x+dotSize, y);
+  this.context.arc(x, y, dotSize, 0, 2 * Math.PI, false);
   this.doRewind();
   this.context.fill();
   this.context.save();
-  this.context.translate(this.x*lineSize, this.y*lineSize);
+  this.context.translate(x, y);
   this.context.rotate(-Math.PI / 4);
-  this.context.translate(-this.x*lineSize, -this.y*lineSize);
-  this.context.fillText(this.sha, (this.x+0.25)*lineSize, (this.y-0.25)*lineSize);
+  this.context.translate(-x, -y);
+  this.context.fillText(this.sha, x+0.25*lineSize, y-0.25*lineSize);
   this.context.restore();
   }
 
 Commit.prototype.doParent = function () {
-  this.context.lineTo(this.x*lineSize, this.y*lineSize);
+  x = this.graph.xpos(this.x);
+  y = this.graph.ypos(this.y);
+  this.context.lineTo(x, y);
   }
 
 Commit.prototype.doRewind = function () {
-  this.context.moveTo(this.x*lineSize, this.y*lineSize);
+  x = this.graph.xpos(this.x);
+  y = this.graph.ypos(this.y);
+  this.context.moveTo(x, y);
   }
 
 
@@ -110,7 +116,9 @@ Branch.prototype.draw = function () {
       this.doJoin(commit, this.path[i]);
       }
     }
-  this.context.fillText(this.name, (this.path[0].x+0.5)*lineSize, (this.row+0.15)*lineSize);
+  x = this.graph.xpos(this.path[0].x);
+  y = this.graph.ypos(this.row);
+  this.context.fillText(this.name, x+0.5*lineSize, y+0.15*lineSize);
   this.context.stroke();
   this.context.closePath();
   }
