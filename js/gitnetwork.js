@@ -19,6 +19,10 @@ function GitNetwork(options) {
 
   }
 
+GitNetwork.prototype.draw = function () {
+  this.branches.map( function(b) { b.draw() } );
+  }
+
 GitNetwork.prototype.resize = function (x, y) {
   this.canvas.width = (x+1) * lineSize;
   this.canvas.height = (y+1) * lineSize;
@@ -96,13 +100,10 @@ Branch.prototype.push = function (sha, parents) {
   return commit;
   }
 
-Branch.prototype.draw = function (color) {
-  if ( color == null ) {
-    color = this.color
-    }
+Branch.prototype.draw = function () {
   this.context.beginPath();
-  this.context.fillStyle = color;
-  this.context.strokeStyle = color;
+  this.context.fillStyle = this.color;
+  this.context.strokeStyle = this.color;
   for ( i in this.path ) {
     this.path[i].draw();
     for ( commit of this.path[i].parents ) {

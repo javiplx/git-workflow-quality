@@ -42,7 +42,7 @@ var gitgraph = new GitNetwork();
             childrens = [ c for c in self[branch].get_childs(False) if not self.get(c.branch) ]
             self.fd.write( '%s.push("%s",["%s"]);\n' % ( branch.as_var() , branch.begin().sha[:8] , '","'.join( [ c.sha[:8] for c in childrens ] ) ) )
             self[branch].rendered = True
-            self.fd.write( '%s.draw("red");\n' % branch.as_var() )
+            self.fd.write( '%s.color = "red";\n' % branch.as_var() )
             self[branch] = None
 
         for branch in unknowns :
@@ -53,6 +53,7 @@ var gitgraph = new GitNetwork();
     def close ( self ) :
         while self.unfinished() :
             self.fd.write( "gitgraph.pointer -= 10;\n" )
+        self.fd.write( 'gitgraph.draw();\n' )
         self.fd.write( self.tail )
         self.fd.close()
 
@@ -89,10 +90,7 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
             if c.branch not in pending :
                 pending.push( c.branch )
 
-        if not commit.parent :
-            fd.write( '%s.draw();\n' % commit.branch.as_var() )
-        elif commit.branch != commit.parent.branch :
-            fd.write( '%s.draw();\n' % commit.branch.as_var() )
+        if commit.parent and commit.branch != commit.parent.branch :
             pending[commit.branch] = None
             break
 
