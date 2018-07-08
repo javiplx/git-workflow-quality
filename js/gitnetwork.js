@@ -1,7 +1,8 @@
 (function () {
 
-dotSize = 4;
+dotSize = 5.5;
 lineSize = 20;
+lineWidth = 2.25;
 
 function GitNetwork(length) {
 
@@ -59,7 +60,7 @@ Commit.prototype.draw = function () {
   y = this.graph.ypos(this.y);
   this.doParent();
   this.context.moveTo(x+dotSize, y);
-  this.context.arc(x, y, dotSize, 0, 2 * Math.PI, false);
+  this.context.arc(x, y, dotSize-this.context.lineWidth, 0, 2 * Math.PI, false);
   this.doRewind();
   this.context.fill();
   this.context.save();
@@ -118,6 +119,7 @@ Branch.prototype.draw = function () {
   this.context.beginPath();
   this.context.fillStyle = this.color;
   this.context.strokeStyle = this.color;
+  this.context.lineWidth = lineWidth;
   for ( i in this.path ) {
     this.path[i].draw();
     for ( commit of this.path[i].parents ) {
