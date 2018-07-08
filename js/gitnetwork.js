@@ -71,9 +71,15 @@ Commit.prototype.draw = function () {
   this.context.restore();
   }
 
-Commit.prototype.doParent = function () {
+Commit.prototype.doParent = function (parent) {
   x = this.graph.xpos(this.x);
   y = this.graph.ypos(this.y);
+  if ( typeof parent != "undefined" ) {
+    X = parent.graph.xpos(parent.x);
+    Y = parent.graph.ypos(parent.y);
+    this.context.lineTo((2*x+8*X)/10, Y);
+    this.context.moveTo((2*x+8*X)/10, Y);
+    }
   this.context.lineTo(x, y);
   }
 
@@ -128,13 +134,13 @@ Branch.prototype.draw = function () {
     }
   x = this.graph.xpos(this.path[0].x);
   y = this.graph.ypos(this.row);
-  this.context.fillText(this.name, x+0.5*lineSize, y+0.15*lineSize);
+  this.context.fillText(this.name, x+0.25*lineSize, y+0.5*lineSize);
   this.context.stroke();
   this.context.closePath();
   }
 
 Branch.prototype.doJoin = function (commit, parent) {
-  commit.doParent();
+  commit.doParent(parent);
   parent.doRewind();
   }
 
