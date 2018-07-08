@@ -22,14 +22,31 @@ var gitgraph = new GitNetwork(%d);
         self.fd = open( filename , 'w' )
         self.fd.write( self.head % len(repo) )
         dict.__init__( self )
+        self._rows = [b for b in repo.branches if b.is_primary()]
+        self.reserved = len(self._rows)
         self.HEAD = None
         for branch in repo.branches :
             if branch.target() != '<Final>' : continue
             self.push( branch , True )
 
+    def __setitem__ ( self , key , value ) :
+        if not value :
+            idx = self._rows.index(key)
+            self._rows[idx] = None
+        elif key not in self._rows :
+            if None in self._rows[self.reserved:] :
+                idx = self.reserved + self._rows[self.reserved:].index(None)
+                self._rows[idx] = key
+            else :
+                self._rows.append( key )
+        dict.__setitem__( self , key , value )
+
+    def row ( self , branch ) :
+        return self._rows.index(branch) + 1
+
     def push ( self , branch , opened=False ) :
-        dict.__setitem__( self , branch , branch.end() )
-        self.fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d, "open":%s});\n' % ( branch.as_var() , branch , len(self) , str(opened).lower() ) )
+        self[branch] = branch.end()
+        self.fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d, "open":%s});\n' % ( branch.as_var() , branch , self.row(branch) , str(opened).lower() ) )
 
     def unfinished ( self ) :
         unknowns = []
