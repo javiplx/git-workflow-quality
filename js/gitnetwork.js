@@ -47,6 +47,7 @@ function Commit(branch, sha) {
   this.x = branch.graph.pointer;
   this.y = branch.row;
   this.context = branch.context;
+  this.branch = branch;
   branch.graph.pointer--;
   return this;
   }
@@ -75,10 +76,14 @@ Commit.prototype.doParent = function (parent) {
   x = this.graph.xpos(this.x);
   y = this.graph.ypos(this.y);
   if ( typeof parent != "undefined" ) {
+    if ( parent.sha == parent.branch.path[parent.branch.path.length-1].sha )
+      delta = lineSize / 2;
+    else
+      delta = - lineSize / 2;
     X = parent.graph.xpos(parent.x);
     Y = parent.graph.ypos(parent.y);
-    this.context.lineTo((2*x+8*X)/10, Y);
-    this.context.moveTo((2*x+8*X)/10, Y);
+    this.context.lineTo(x+delta, Y);
+    this.context.moveTo(x+delta, Y);
     }
   this.context.lineTo(x, y);
   }
