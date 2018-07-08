@@ -76,9 +76,11 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
             fd.write( '%s.push("%s",["%s"]);\n' % ( commit.branch.as_var() , commit.sha[:8] , '","'.join( [ c.sha[:8] for c in commit.get_childs(False) ] ) ) )
             first = True
         else :
-            if first or commit.branch.begin() == commit  or True :
+            if commit.parents or commit.branch.begin() == commit :
+                first = True
+            if first :
                 fd.write( '%s.push("%s",[]);\n' % ( commit.branch.as_var() , commit.sha[:8] ) )
-            if commit.branch.target() != commit :
+            if not commit.parents :
                 first = False
         commit.rendered = True
 
