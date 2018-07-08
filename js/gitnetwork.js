@@ -95,6 +95,7 @@ function Branch(options) {
   this.row = options.column + 1;
   this.graph = options.graph;
   this.context = options.context;
+  this.open = options.open;
   this.path = [];
   this.column = -1;
   this.color = this.graph.palette[(options.column-1)%this.graph.palette.length];
@@ -134,7 +135,10 @@ Branch.prototype.draw = function () {
     }
   x = this.graph.xpos(this.path[0].x);
   y = this.graph.ypos(this.row);
-  this.context.fillText(this.name, x+0.25*lineSize, y+0.5*lineSize);
+  if ( this.open )
+    this.context.fillText(this.name, x+0.5*lineSize, y+0.15*lineSize);
+  else
+    this.context.fillText(this.name, x+0.25*lineSize, y+0.5*lineSize);
   this.context.stroke();
   this.context.closePath();
   }

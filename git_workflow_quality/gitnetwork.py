@@ -22,13 +22,14 @@ var gitgraph = new GitNetwork(%d);
         self.fd = open( filename , 'w' )
         self.fd.write( self.head % len(repo) )
         dict.__init__( self )
+        self.HEAD = None
         for branch in repo.branches :
             if branch.target() != '<Final>' : continue
-            self.push( branch )
+            self.push( branch , True )
 
-    def push ( self , branch ) :
+    def push ( self , branch , opened=False ) :
         dict.__setitem__( self , branch , branch.end() )
-        self.fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d});\n' % ( branch.as_var() , branch , len(self) ) )
+        self.fd.write( 'var %s = gitgraph.branch({"name":"%s", "column":%d, "open":%s});\n' % ( branch.as_var() , branch , len(self) , str(opened).lower() ) )
 
     def unfinished ( self ) :
         unknowns = []
@@ -74,6 +75,9 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
 
         if [ c for c in commit.get_childs(False) if not c.rendered ] : return
 
+        if commit.branch.end() == commit and commit.child == pending.HEAD :
+            fd.write( 'gitgraph.pointer -= 2;\n' )
+
         if commit.get_childs(False) :
             fd.write( '%s.push("%s",[]);\n' % ( commit.branch.as_var() , commit.sha[:8] ) )
             for c in commit.get_childs(False) :
@@ -89,6 +93,7 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
                 fd.write( '%s.push("%s",[]);\n' % ( commit.branch.as_var() , commit.sha[:8] ) )
             if not commit.parents :
                 first = False
+        pending.HEAD = commit
         commit.rendered = True
 
         for c in commit.get_parents(False) :
