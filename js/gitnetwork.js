@@ -10,6 +10,7 @@ function GitNetwork(length) {
   this.context = this.canvas.getContext("2d");
 
   this.branches = [];
+  this.maxrow = 0;
   this.length = length;
   this.pointer = length;
 
@@ -27,7 +28,7 @@ GitNetwork.prototype.ypos = function (y) {
 
 GitNetwork.prototype.draw = function () {
   this.canvas.width = ( this.length - this.pointer + 6 ) * lineSize;
-  this.canvas.height = ( this.branches.length + 3 ) * lineSize;
+  this.canvas.height = ( this.maxrow + 2 ) * lineSize;
   this.branches.map( function(b) { b.draw() } );
   }
 
@@ -35,6 +36,8 @@ GitNetwork.prototype.branch = function (options) {
   options.graph = this;
   options.context = this.context;
   var branch = new Branch(options);
+  if ( branch.row > this.maxrow )
+    this.maxrow = branch.row;
   this.branches.push(branch);
   return branch;
   }
