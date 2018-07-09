@@ -15,12 +15,15 @@ function GitNetwork(length) {
   this.length = length;
   this.pointer = length;
 
+  // The number is the pixel with, and must be underestimated
+  this.history_limit = 16000 / lineSize;
+
   this.palette = ["black", "blue", "green", "magenta", "gold", "darkblue", "orange"];
 
   }
 
 GitNetwork.prototype.xpos = function (x) {
-  return ( x - this.pointer ) * lineSize - this.drift;
+  return ( ( x - this.drift ) - this.pointer ) * lineSize;
   }
 
 GitNetwork.prototype.ypos = function (y) {
@@ -28,7 +31,9 @@ GitNetwork.prototype.ypos = function (y) {
   }
 
 GitNetwork.prototype.draw = function () {
-  this.canvas.width = Math.min( 16800 , ( this.length - this.pointer + 6 ) * lineSize );
+  this.canvas.width = Math.min( this.history_limit , this.length - this.pointer );
+  this.drift = Math.max( 0 , ( this.length - this.pointer ) - this.history_limit );
+  this.canvas.width = ( this.canvas.width + 6 ) * lineSize;
   this.canvas.height = ( this.maxrow + 2 ) * lineSize;
   this.branches.map( function(b) { b.draw() } );
   }
