@@ -10,6 +10,7 @@ function GitNetwork(length) {
   this.context = this.canvas.getContext("2d");
 
   this.branches = [];
+  this.drift = 0;
   this.maxrow = 0;
   this.length = length;
   this.pointer = length;
@@ -19,7 +20,7 @@ function GitNetwork(length) {
   }
 
 GitNetwork.prototype.xpos = function (x) {
-  return ( x - this.pointer ) * lineSize;
+  return ( x - this.pointer ) * lineSize - this.drift;
   }
 
 GitNetwork.prototype.ypos = function (y) {
@@ -27,7 +28,7 @@ GitNetwork.prototype.ypos = function (y) {
   }
 
 GitNetwork.prototype.draw = function () {
-  this.canvas.width = ( this.length - this.pointer + 6 ) * lineSize;
+  this.canvas.width = Math.min( 16800 , ( this.length - this.pointer + 6 ) * lineSize );
   this.canvas.height = ( this.maxrow + 2 ) * lineSize;
   this.branches.map( function(b) { b.draw() } );
   }
