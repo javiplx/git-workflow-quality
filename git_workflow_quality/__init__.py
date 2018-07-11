@@ -353,6 +353,7 @@ class Repository ( dict ) :
         sha , author , committer , message = line[:-1].strip('"').split(None, 3)
         self[sha] = Commit( sha , author , committer , message )
         line = cmd.stdout.readline()
+        if len(self) % 200 == 0  : os.sys.stdout.write( "%4d commits read\r" % len(self) )
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--date-order', '--reverse', '--format="%H %at %ct %P"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -363,6 +364,7 @@ class Repository ( dict ) :
             raise Exception( "Incorrect input ordering" )
         self.order.append( self[sha] )
         line = cmd.stdout.readline()
+        if len(self.order) % 200 == 0  : os.sys.stdout.write( "%4d commits ordered\r" % len(self.order) )
 
     self.set_childs()
 
@@ -577,12 +579,17 @@ class Repository ( dict ) :
                 c.set_branch( branch , commit )
             elif c.child != commit and commit not in c.forks :
                 c.forks.append( commit )
-    if n : print "WARNING : %d removed branch not automatically detected" % n
+    if n : print "WARNING : %d removed branches not automatically detected" % n
 
     # All branches detected at this point
 
+    print
+    cnt = 1
     for c,branch in branches :
+        os.sys.stdout.write( "%2d %% ancestry, branch: %-40s\r" % ( 100*cnt/len(branches) , str(branch)[:40] ) )
+        cnt += 1
         branch.ancestry( c )
+    print
 
     self.order.reverse()
     for c in self.order :
