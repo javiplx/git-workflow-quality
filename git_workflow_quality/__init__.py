@@ -547,6 +547,7 @@ class Repository ( dict ) :
                             print "WARNING : '%s' not set on commit %s, already on '%s'" % ( merged.group('target').strip("'") , commit.sha , commit.branch )
 
     for sha,branchname in get_branches() :
+        if not sha in self : continue
         match = [ B for B in branches if B[0] == self[sha] ]
         if match :
             c,b = match[0]
