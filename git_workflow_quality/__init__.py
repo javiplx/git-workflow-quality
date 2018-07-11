@@ -91,15 +91,19 @@ class Branch ( list ) :
         return len(self), len(self.commits()), len(self.merges())
 
     def begin ( self ) :
-        begins = [ c for c in list.__iter__(self) if not c.parent or c.parent.branch != self ]
+        begins = [ c for c in list.__iter__(self) if not c.parent ]
+        if not begins :
+            begins = [ c for c in list.__iter__(self) if c.parent.branch != self ]
         assert len(begins) == 1
         return begins[0]
 
     def end ( self ) :
-        ends = [ c for c in list.__iter__(self) if not c.child or c.child.branch != self ]
-        if len(ends) > 1 :
-            # This just searches end on direct childs, and will not detect indirect merge-backs
-            ends = [ end for end in ends if not end.child or not end.child.branch.end().child or end.child.branch.end().child.branch != self ]
+        ends = [ c for c in list.__iter__(self) if not c.child ]
+        if not ends :
+            ends = [ c for c in list.__iter__(self) if c.child.branch != self ]
+            if not ends :
+                # This just searches end on direct childs, and will not detect indirect merge-backs
+                ends = [ end for end in ends if not end.child or not end.child.branch.end().child or end.child.branch.end().child.branch != self ]
         assert len(ends) == 1
         return ends[0]
 
