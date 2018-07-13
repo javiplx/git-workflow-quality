@@ -288,8 +288,11 @@ class Branch ( list ) :
     def report ( self , branches=False ) :
         output = [ self.name[:25] , len(self.commits()) , len(self.merges()) ]
         if branches :
+          if len(self) > 0 :
             sources = self.relations()[0]
             output.extend( ( self.source() , len(sources) , self.target() ) )
+          else :
+            output.extend( ( "" , -1 , "" ) )
         return tuple(output)
 
     def as_var ( self ) :
