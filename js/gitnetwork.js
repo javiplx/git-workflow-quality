@@ -52,7 +52,7 @@ GitNetwork.prototype.branch = function (options) {
 function Commit(branch, sha) {
   this.graph = branch.graph;
   this.sha = sha;
-  this.parents = [];
+  this.childs = [];
   this.x = branch.graph.pointer;
   this.y = branch.row;
   this.context = branch.context;
@@ -61,8 +61,8 @@ function Commit(branch, sha) {
   return this;
   }
 
-Commit.prototype.addParent = function (sha) {
-  this.parents.push( this.graph.branches.filter( function(x) { return x.has(sha) } )[0].get(sha) );
+Commit.prototype.addChild = function (sha) {
+  this.childs.push( this.graph.branches.filter( function(x) { return x.has(sha) } )[0].get(sha) );
   }
 
 Commit.prototype.draw = function () {
@@ -130,7 +130,7 @@ Branch.prototype.get = function (sha) {
   return commit[0];
   }
 
-Branch.prototype.push = function (sha, parents) {
+Branch.prototype.push = function (sha) {
   var commit = new Commit(this, sha);
   this.path.push( commit );
   return commit;
@@ -143,7 +143,7 @@ Branch.prototype.draw = function () {
   this.context.lineWidth = lineWidth;
   for ( i in this.path ) {
     this.path[i].draw();
-    for ( commit of this.path[i].parents ) {
+    for ( commit of this.path[i].childs ) {
       this.doJoin(commit, this.path[i]);
       }
     }

@@ -57,7 +57,7 @@ var gitgraph = new GitNetwork(%d);
             self.fd.write( '%s.push("%s",[]);\n' % ( branch.as_var() , branch.begin().sha[:8] ) )
             for c in self[branch].get_childs(False) :
                 if self.get(c.branch) : continue
-                self.fd.write( '%s.head().addParent("%s");\n' % ( branch.as_var() , c.sha[:8] ) )
+                self.fd.write( '%s.head().addChild("%s");\n' % ( branch.as_var() , c.sha[:8] ) )
             self[branch].rendered = True
             self.fd.write( '%s.color = "red";\n' % branch.as_var() )
             self[branch] = None
@@ -99,9 +99,9 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
             fd.write( '%s.push("%s",[]);\n' % ( commit.branch.as_var() , commit.sha[:8] ) )
             for c in commit.get_childs(False) :
                 if c.branch.begin() == c :
-                    fd.write( '%s.get("%s").addParent("%s");\n' % ( c.branch.as_var() , c.sha[:8] , commit.sha[:8] ) )
+                    fd.write( '%s.get("%s").addChild("%s"); // begin\n' % ( c.branch.as_var() , c.sha[:8] , commit.sha[:8] ) )
                 else :
-                    fd.write( '%s.head().addParent("%s");\n' % ( commit.branch.as_var() , c.sha[:8] ) )
+                    fd.write( '%s.head().addChild("%s"); // standar\n' % ( commit.branch.as_var() , c.sha[:8] ) )
             first = True
         else :
             if commit.parents or commit.branch.begin() == commit :
