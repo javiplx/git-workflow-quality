@@ -85,14 +85,22 @@ Commit.prototype.doParent = function (parent) {
   x = this.graph.xpos(this.x);
   y = this.graph.ypos(this.y);
   if ( typeof parent != "undefined" ) {
-    if ( parent.sha == parent.branch.path[parent.branch.path.length-1].sha )
-      delta = lineSize / 2;
-    else
-      delta = - lineSize / 2;
     X = parent.graph.xpos(parent.x);
     Y = parent.graph.ypos(parent.y);
-    this.context.lineTo(x+delta, Y);
-    this.context.moveTo(x+delta, Y);
+    if ( parent.sha == parent.branch.path[parent.branch.path.length-1].sha ) {
+      delta = lineSize / 2;
+      this.context.lineTo(x+delta, Y);
+      this.context.moveTo(x+delta, Y);
+    } else if ( parent.sha == parent.branch.path[0].sha ) {
+      this.context.lineTo(x-delta, Y);
+      this.context.moveTo(x-delta, Y);
+    } else {
+      delta = - lineSize / 2;
+      this.context.lineTo(X-delta, y+lineSize/2);
+      this.context.moveTo(X-delta, y+lineSize/2);
+      this.context.lineTo(x+delta, y+lineSize/2);
+      this.context.moveTo(x+delta, y+lineSize/2);
+      }
     }
   this.context.lineTo(x, y);
   }
