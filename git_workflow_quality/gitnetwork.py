@@ -29,11 +29,12 @@ var gitgraph = new GitNetwork(%d);
             if branch.target() != '<Final>' : continue
             self.push( branch , True )
 
+    def pop ( self , key ) :
+       idx = self._rows.index(key)
+       self._rows[idx] = None
+
     def __setitem__ ( self , key , value ) :
-        if not value :
-            idx = self._rows.index(key)
-            self._rows[idx] = None
-        elif key not in self._rows :
+        if key not in self._rows :
             if None in self._rows[self.reserved:] :
                 idx = self.reserved + self._rows[self.reserved:].index(None)
                 self._rows[idx] = key
@@ -90,6 +91,10 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
     first = True
     while commit :
 
+        for c in commit.get_parents(False) :
+            if c.branch not in pending :
+                pending.push( c.branch )
+
         if [ c for c in commit.get_childs(False) if not c.rendered ] : return
 
         if commit.branch.end() == commit and commit.child == pending.HEAD :
@@ -102,6 +107,8 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
                     fd.write( '%s.get("%s").addChild("%s"); // begin\n' % ( c.branch.as_var() , c.sha[:8] , commit.sha[:8] ) )
                 else :
                     fd.write( '%s.head().addChild("%s"); // standar\n' % ( commit.branch.as_var() , c.sha[:8] ) )
+            if not pending[c.branch] and c.branch in pending._rows:
+                pending.pop(c.branch)
             first = True
         else :
             if commit.parents or commit.branch.begin() == commit :
@@ -112,10 +119,6 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
                 first = False
         pending.HEAD = commit
         commit.rendered = True
-
-        for c in commit.get_parents(False) :
-            if c.branch not in pending :
-                pending.push( c.branch )
 
         if commit.parent and commit.branch != commit.parent.branch :
             pending[commit.branch] = None
