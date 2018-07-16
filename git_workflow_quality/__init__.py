@@ -1,5 +1,6 @@
 
 import gitgraphjs
+import gitnetwork
 
 import subprocess
 import re
@@ -38,16 +39,18 @@ class Commit :
                 self.forks.remove( child )
         self.child = child
 
-    def get_parents ( self ) :
+    def get_parents ( self , full=True ) :
         parents = []
         if self.parent :
+          if full or self.branch != self.parent.branch :
             parents.append( self.parent )
         parents.extend( self.parents )
         return parents
 
-    def get_childs ( self ) :
+    def get_childs ( self , full=True ) :
         childs = []
         if self.child :
+          if full or self.branch != self.child.branch :
             childs.append( self.child )
         childs.extend( self.forks )
         return childs
@@ -80,6 +83,9 @@ class Branch ( list ) :
         self.orphan = orphan
         self.rendered = False
         list.__init__( self )
+
+    def __hash__ ( self ) :
+        return self.name.__hash__()
 
     def commits ( self ) :
         return [c for c in list.__iter__(self) if not c.parents]
@@ -160,6 +166,14 @@ class Branch ( list ) :
         while this.child and this.child.branch == self :
             yield this
             this = this.child
+        yield this
+        raise StopIteration()
+
+    def backward_commits ( self ) :
+        this = self.end()
+        while this.parent and this.parent.branch == self :
+            yield this
+            this = this.parent
         yield this
         raise StopIteration()
 
