@@ -435,18 +435,22 @@ class Repository ( dict ) :
       indirect = 0
       multisource = 0
       mergeconflict = 0
+      if details :
+          if not os.path.isdir( 'branches' ) :
+              os.mkdir( 'branches' )
       for branch in self.branches :
           dump = False
           if branch.is_primary() or branch.is_release() :
               continue
-          if branch.end().child and branch.end().forks :
-              for child in branch.end().forks :
+          end = branch.end()
+          if end.child and end.forks :
+              for child in end.forks :
                 if child.branch and child.branch.begin() and child.branch.begin().parent :
-                  if child.branch.begin().parent == branch.end() :
+                  if child.branch.begin().parent == end :
                       reutilized += 1
                       dump = True
-          if branch.end().child and branch.end().parents :
-              if branch.end().parents[0] == branch.end().child.parent :
+          if end.child and end.parents :
+              if end.parents[0] == end.child.parent :
                   mergeconflict += 1
                   dump = True
           source = branch.source()
