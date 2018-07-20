@@ -39,6 +39,12 @@ class Commit :
                 self.forks.remove( child )
         self.child = child
 
+    def add_child ( self , child ) :
+        if not self.child or self.child == child :
+            self.child = child
+        elif child not in self.forks :
+            self.forks.append( child )
+
     def get_parents ( self , full=True ) :
         parents = []
         if self.parent :
@@ -142,15 +148,17 @@ class Branch ( list ) :
         return False
 
     def ancestry ( self , commit ) :
+        if commit.branch != self : return
         child = commit
         commit = commit.parent
         while commit :
-            if commit.branch and not self.is_primary() :
-                if commit.child and commit.child != child :
-                    commit.forks.append( child )
-                else :
-                    commit.child = child
-                break
+            if commit.branch :
+                if not self.is_primary() :
+                    commit.add_child( child )
+                    break
+                elif self <= commit.branch :
+                    commit.add_child( child )
+                    break
             commit.set_branch( self , child )
             child = commit
             commit = commit.parent
