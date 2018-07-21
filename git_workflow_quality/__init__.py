@@ -25,7 +25,7 @@ class Commit :
             # self.branch has a higher weight respect to branch
             return
         if self.branch and not branch.is_primary() :
-            print "WARNING : cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch )
+            print "WARNING : cannot assign %s to %s, already owned by %s" % ( branch.pretty() , self.sha , self.branch.pretty() )
             return
         branch.append( self )
         if child :
@@ -169,6 +169,11 @@ class Branch ( list ) :
 
     def __str__ ( self ) :
         return self.name
+
+    def pretty ( self ) :
+        if len(str(self)) > 40 :
+            return str(self)[:40] + " ..."
+        return str(self)
 
     def relations ( self ) :
         sources = []
@@ -552,12 +557,12 @@ class Repository ( dict ) :
                     commit.parents[0].forks.append( commit )
                 if merged.group('target') :
                     if not [ b for (c,b) in branches if c == commit ] :
-                        target = self.new_branch(merged.group('target').strip("'"))
+                        target = self.new_branch(merged.group('target').strip("'")+" [auto]")
                         branches.append( ( commit.parent , target ) )
                         commit.parent.set_branch(target, commit)
                     else :
                         if commit.branch.name != merged.group('target').strip("'") :
-                            print "WARNING : '%s' not set on commit %s, already on '%s'" % ( merged.group('target').strip("'") , commit.sha , commit.branch )
+                            print "WARNING : '%s [auto]' not set on commit %s, already on '%s'" % ( merged.group('target').strip("'") , commit.sha , commit.branch.pretty() )
 
     for sha,branchname in get_branches() :
         if not sha in self : continue
@@ -572,7 +577,7 @@ class Repository ( dict ) :
                 continue
             # This case only might arise when remote tips are merged into local-only branches
             print "WARNING : branch '%s' overwritten by '%s' at %s" % ( b.name , branchname , sha )
-            assert len(b) < 2
+            assert len(b) == 1
             self[sha].branch = None
             self.branches.remove(b)
             branches.remove((c,b))
@@ -580,6 +585,7 @@ class Repository ( dict ) :
         branches.append( ( self[sha] , branch ) )
         self[sha].set_branch( branch )
 
+    # Final search for merge commits without standard messages
     n = 0
     for commit in self.values() :
         for c in commit.parents :
@@ -588,7 +594,7 @@ class Repository ( dict ) :
                 branch = self.new_branch("removed %s" % n)
                 branches.append( ( c , branch ) )
                 c.set_branch( branch , commit )
-            elif c.child != commit and commit not in c.forks :
+            elif commit not in c.get_childs() :
                 c.forks.append( commit )
     if n : print "WARNING : %d removed branches not automatically detected" % n
 
@@ -613,7 +619,10 @@ class Repository ( dict ) :
 
     empty = [ branch for branch in self.branches if len(branch) == 0 ]
     if empty :
-        print "ERROR : generated empty branches %s" % ", ".join(map(str,empty))
+        if len(empty) > 20 :
+            print "ERROR : generated %d empty branches" % len(empty)
+        else :
+            print "ERROR : generated empty branches\n\t%s" % " \n\t".join(map(str,empty))
         for branch in empty :
             self.branches.remove(branch)
 
