@@ -351,14 +351,18 @@ def get_branches () :
             while line[:-1] :
                 items = line[:-1].split(None, 2)
                 if len(items) > 1 and items[1].startswith(refs) :
-                    branches.append( ( items[0] , items[1][len(refs)+1:] ) )
+                    branch = items[1][len(refs)+1:]
+                    branches = [ b for b in branches if b[1] != branch ]
+                    branches.append( ( items[0] , branch ) )
                 line = fd.readline()
     for root, dirs, files in os.walk(heads) :
         for f in files:
             if f == "HEAD" : continue
             filename = os.path.join(root, f)
             fd = open(filename)
-            branches.append( ( fd.readline()[:-1] , filename[len(heads)+1:].replace('\\', '/') ) )
+            branch = filename[len(heads)+1:].replace('\\', '/')
+            branches = [ b for b in branches if b[1] != branch ]
+            branches.append( ( fd.readline()[:-1] , branch ) )
             fd.close()
     return branches
 
