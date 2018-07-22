@@ -368,6 +368,8 @@ def get_branches () :
 
 class Repository ( dict ) :
 
+  primary = ( 'master' ,)
+
   def __init__ ( self ) :
 
     self.order = []
