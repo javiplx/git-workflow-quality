@@ -359,10 +359,12 @@ class Repository ( dict ) :
     self.order = []
     self.branches = []
 
-    cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H %ae %ce %s"'] , stdout=subprocess.PIPE )
+    cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H \"%ae\" \"%ce\" %s"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
     while line[:-1] :
         sha , author , committer , message = line[:-1].strip('"').split(None, 3)
+        author = author.strip('"')
+        committer = committer.strip('"')
         self[sha] = Commit( sha , author , committer , message )
         line = cmd.stdout.readline()
         if len(self) % 200 == 0  : os.sys.stdout.write( "%4d commits read\r" % len(self) )
