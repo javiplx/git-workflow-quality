@@ -10,17 +10,21 @@ if __name__ == '__main__' :
     parser = argparse.ArgumentParser(description='Extract simple analytics from git repository')
     parser.add_argument('--detailed', action='store_true', help='Show per-branch statistics')
     parser.add_argument('--graph', choices=['topo', 'date', 'backwards'], help='Generate gitgraphjs file')
+    parser.add_argument('--limit', type=int, default=-1, help='Number of commits to show in plot (-1 to plot all)')
     parser.add_argument('--dot', help='Express branch relations in dot language')
     args = parser.parse_args()
+
+    if args.limit and not args.graph :
+        print "WARNING : --limit does only apply to graphs"
 
     repo = git_workflow_quality.Repository()
 
     print repo.report(args.detailed)
 
     if args.graph == 'backwards' :
-        git_workflow_quality.gitnetwork.graph( repo )
+        git_workflow_quality.gitnetwork.graph( repo , args )
     elif args.graph :
-        git_workflow_quality.gitgraphjs.graph( repo , args.graph )
+        git_workflow_quality.gitgraphjs.graph( repo , args )
 
     print repo.events(args.detailed)
 
