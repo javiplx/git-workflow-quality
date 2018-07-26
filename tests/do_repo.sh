@@ -1,6 +1,18 @@
+#!/bin/bash
 
 set -e
 
+if [ $# -ne 1 ] ; then
+  echo "Usage : ${0##*/} testname"
+  exit
+  fi
+
+TESTNAME=$1
+
+if [ ! -e ${TESTNAME}.repo ] ; then
+  echo "Test file '${TESTNAME}.repo' not found"
+  exit
+  fi
 
 make_commits() {
   branch=$1
@@ -31,49 +43,19 @@ make_merge() {
   }
 
 
-TMPREPO=testrepo_$RANDOM
+TMPREPO=testrepo_${TESTNAME}_${RANDOM}
 
-rm -rf testrepo.git
-mkdir testrepo.git
-cd testrepo.git
+rm -rf ${TESTNAME}.git
+mkdir ${TESTNAME}.git
+cd ${TESTNAME}.git
 git init --bare
 cd ..
 
 
-git clone testrepo.git ${TMPREPO}
+git clone ${TESTNAME}.git ${TMPREPO}
 cd ${TMPREPO}
 
-make_commits master 1
-
-make_commits branch1 1
-
-make_commits master 2 2
-
-make_commits branch2 2
-
-make_commits master 4 3
-
-make_commits branch3 1
-
-make_commits master 5 5
-
-make_merge branch2 branch1
-
-make_commits branch1 2 2
-
-make_commits branch2 4 4
-
-make_merge branch1 branch3
-
-make_commits branch3 2 2
-
-make_merge branch2 master
-
-make_commits branch3 2 2
-
-make_commits master 6 6
-
-git push origin master branch1 branch2 branch3
+. ../${TESTNAME}.repo
 
 cd ..
 rm -rf ${TMPREPO}
