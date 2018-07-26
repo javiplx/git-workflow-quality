@@ -19,5 +19,23 @@ if c.forks and not c.child :
 else :
     print "OK - child assigned to %s" % c.sha
 
-git_workflow_quality.gitgraphjs.graph( repo , 'date' )
+os.chdir('../..')
+
+
+def test_event ( event ) :
+    os.chdir( 'tests/%s.git' % event )
+    repo = git_workflow_quality.Repository()
+    count = repo.event_list()[0][event]
+    if count == 1 :
+        print "OK - 1 %s found" % event
+    else :
+        print "ERROR - %d %s found" % ( count , event )
+    os.chdir('../..')
+
+test_event( 'multitarget' )
+test_event( 'reutilized' )
+test_event( 'multimerged' )
+test_event( 'indirect' )
+test_event( 'multisource' )
+test_event( 'conflict' )
 
