@@ -20,7 +20,7 @@ if __name__ == '__main__' :
     if args.graph == 'backwards' :
         git_workflow_quality.gitnetwork.graph( repo )
     elif args.graph :
-        git_workflow_quality.gitgraphjs.graph( repo , args.graph )
+        git_workflow_quality.gitgraphjs.graph( repo , args )
 
     print repo.events(args.detailed)
 
