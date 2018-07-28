@@ -1,0 +1,15 @@
+
+make_commits master 1
+
+make_commits branch1 1
+
+make_commits master 3 2
+
+make_merge master branch1
+
+make_commits master 4 4
+
+make_commits branch1 2 2
+
+git push origin master branch1
+

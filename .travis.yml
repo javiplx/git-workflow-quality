@@ -1,0 +1,7 @@
+language: python
+python:
+  - "2.7"
+before_script:
+  - cd tests && for f in *.repo ; do bash do_repo.sh --no-sleep ${f%.repo} ; done && cd ..
+script:
+  - python do_test.py

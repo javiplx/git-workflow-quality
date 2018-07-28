@@ -7,7 +7,7 @@ if [ ! -d "$1" ] ; then
 
 cd $1
 
-python ../../git-workflow-quality date
+python ../../gwfqa --graph date
 
 cat <<HTML > index.html
 <!DOCTYPE html>

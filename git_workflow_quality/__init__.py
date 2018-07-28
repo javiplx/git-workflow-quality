@@ -431,6 +431,24 @@ class Repository ( dict ) :
 
   def events( self , details=False) :
       output = ['']
+      event_list , msgs = self.event_list( details )
+
+      if msgs : output.extend( msgs )
+
+      output.append( "Branch events" )
+      output.append( "  multitarget   %4d" % event_list['multitarget'] )
+      output.append( "  reutilized    %4d" % event_list['reutilized'] )
+      output.append( "  multimerged   %4d" % event_list['multimerged'] )
+      output.append( "  indirect      %4d" % event_list['indirect'] )
+      output.append( "  multisource   %4d" % event_list['multisource'] )
+      output.append( "  conflict      %4d" % event_list['conflict'] )
+      output.append( "" )
+
+      return "\n".join(output)
+
+  def event_list( self , details=False) :
+      output = { 'multitarget':0 , 'reutilized':0 , 'multimerged':0 , 'indirect':0 , 'multisource':0 , 'conflict':0 }
+      msgs = []
 
       multimerged = {}
       for commit in self.values() :
@@ -456,21 +474,17 @@ class Repository ( dict ) :
               if not multimerged.has_key(len(merges)) :
                   multimerged[len(merges)] = []
               multimerged[len(merges)].append( ( commit.sha , merges ) )
-      if multimerged :
-          output.append( "Commits with multiple merges" )
-          for n in sorted(multimerged.keys()) :
-              output.append( "    %3d commits with %2d merges" % ( len(multimerged[n]) , n ) )
-          output.append( '' )
 
-      multitarget = 0
-      reutilized = 0
-      multimerged = 0
-      indirect = 0
-      multisource = 0
-      mergeconflict = 0
+      if multimerged :
+          msgs.append( "Commits with multiple merges" )
+          for n in sorted(multimerged.keys()) :
+              msgs.append( "    %3d commits with %2d merges" % ( len(multimerged[n]) , n ) )
+          msgs.append( '' )
+
       if details :
           if not os.path.isdir( 'branches' ) :
               os.mkdir( 'branches' )
+
       for branch in self.branches :
           dump = False
           if branch.is_primary() or branch.is_release() :
@@ -480,39 +494,35 @@ class Repository ( dict ) :
               for child in end.forks :
                 if child.branch and child.branch.begin() and child.branch.begin().parent :
                   if child.branch.begin().parent == end :
-                      reutilized += 1
+                      output['reutilized'] += 1
                       dump = True
           if end.child and end.parents :
               if end.parents[0] == end.child.parent :
-                  mergeconflict += 1
+                  output['conflict'] += 1
                   dump = True
           source = branch.source()
+          if source != '<Initial>' :
+              source = [ b for b in self.branches if b.name == source ][0]
           target = branch.target()
+          if target != '<Final>' :
+              target = [ b for b in self.branches if b.name == target ][0]
           sources , targets = branch.relations()
           if targets :
-              multitarget += 1
+              output['multitarget'] += 1
               dump = True
           if source in [c.branch for c in sources] :
-              multimerged += 1
+              output['multimerged'] += 1
               dump = True
           if source != target and branch.end().child :
-              indirect += 1
+              output['indirect'] += 1
               dump = True
           if [ branch for commit in sources if commit.branch != source ] :
-              multisource += 1
+              output['multisource'] += 1
               dump = True
           if dump and details :
               branch.gitgraph( "%s.html" % branch.as_var().replace('branch_', 'branches/', 1) )
-      output.append( "Branch events" )
-      output.append( "  multitarget   %4d" % multitarget )
-      output.append( "  reutilized    %4d" % reutilized )
-      output.append( "  multimerged   %4d" % multimerged )
-      output.append( "  indirect      %4d" % indirect )
-      output.append( "  multisource   %4d" % multisource )
-      output.append( "  mergeconflict %4d" % mergeconflict )
-      output.append( '' )
 
-      return "\n".join(output)
+      return output , msgs
 
   def report( self , details=False) :
       output = ['']

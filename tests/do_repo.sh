@@ -1,6 +1,24 @@
+#!/bin/bash
 
 set -e
 
+SLEEP=Y
+if [ "$1" = --no-sleep ] ; then
+  SLEEP=N
+  shift
+  fi
+
+if [ $# -ne 1 ] ; then
+  echo "Usage : ${0##*/} testname"
+  exit
+  fi
+
+TESTNAME=$1
+
+if [ ! -e ${TESTNAME}.repo ] ; then
+  echo "Test file '${TESTNAME}.repo' not found"
+  exit
+  fi
 
 make_commits() {
   branch=$1
@@ -8,72 +26,42 @@ make_commits() {
   min=${3:-0}
   source=${4:-master}
 
-  [ $min -eq 0 -a $branch != master ] && git checkout -b $branch $source
-  [ $min -eq 0 -a $branch = master ] || git checkout $branch
+  [ $min -eq 0 -a $branch != master ] && git checkout --quiet -b $branch $source
+  [ $min -eq 0 -a $branch = master ] || git checkout --quiet $branch
 
   for n in $( seq $min $max ) ; do
     echo $n >> $branch.txt
     git add $branch.txt
-    git commit -m "$branch $n"
-    sleep 2
+    git commit --quiet -m "$branch $n"
+    [ "$SLEEP" = "N" ] || sleep 2
     done
-  sleep 2
+  [ "$SLEEP" = "N" ] || sleep 2
   }
 
 make_merge() {
   source=$1
   target=$2
 
-  git checkout $target
-  git merge --no-ff $source -m "Merge branch $source into $target"
+  git checkout --quiet $target
+  git merge --quiet --no-ff $source -m "Merge branch $source into $target"
 
-  sleep 2
+  [ "$SLEEP" = "N" ] || sleep 2
   }
 
 
-TMPREPO=testrepo_$RANDOM
+TMPREPO=testrepo_${TESTNAME}_${RANDOM}
 
-rm -rf testrepo.git
-mkdir testrepo.git
-cd testrepo.git
-git init --bare
+rm -rf ${TESTNAME}.git
+mkdir ${TESTNAME}.git
+cd ${TESTNAME}.git
+git init --quiet --bare
 cd ..
 
 
-git clone testrepo.git ${TMPREPO}
+git clone --quiet ${TESTNAME}.git ${TMPREPO}
 cd ${TMPREPO}
 
-make_commits master 1
-
-make_commits branch1 1
-
-make_commits master 2 2
-
-make_commits branch2 2
-
-make_commits master 4 3
-
-make_commits branch3 1
-
-make_commits master 5 5
-
-make_merge branch2 branch1
-
-make_commits branch1 2 2
-
-make_commits branch2 4 4
-
-make_merge branch1 branch3
-
-make_commits branch3 2 2
-
-make_merge branch2 master
-
-make_commits branch3 2 2
-
-make_commits master 6 6
-
-git push origin master branch1 branch2 branch3
+. ../${TESTNAME}.repo
 
 cd ..
 rm -rf ${TMPREPO}
