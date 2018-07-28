@@ -26,7 +26,7 @@ class Commit :
             # self.branch has a higher weight respect to branch
             return
         if self.branch and not branch.is_primary() :
-            print "WARNING : cannot assign %s to %s, already owned by %s" % ( branch , self.sha , self.branch )
+            print "WARNING : cannot assign %s to %s, already owned by %s" % ( branch.pretty() , self.sha , self.branch.pretty() )
             return
         branch.append( self )
         if child :
@@ -103,15 +103,19 @@ class Branch ( list ) :
         return len(self), len(self.commits()), len(self.merges())
 
     def begin ( self ) :
-        begins = [ c for c in list.__iter__(self) if not c.parent or c.parent.branch != self ]
+        begins = [ c for c in list.__iter__(self) if not c.parent ]
+        if not begins :
+            begins = [ c for c in list.__iter__(self) if c.parent.branch != self ]
         assert len(begins) == 1
         return begins[0]
 
     def end ( self ) :
-        ends = [ c for c in list.__iter__(self) if not c.child or c.child.branch != self ]
-        if len(ends) > 1 :
-            # This just searches end on direct childs, and will not detect indirect merge-backs
-            ends = [ end for end in ends if not end.child or not end.child.branch.end().child or end.child.branch.end().child.branch != self ]
+        ends = [ c for c in list.__iter__(self) if not c.child ]
+        if not ends :
+            ends = [ c for c in list.__iter__(self) if c.child.branch != self ]
+            if not ends :
+                # This just searches end on direct childs, and will not detect indirect merge-backs
+                ends = [ end for end in ends if not end.child or not end.child.branch.end().child or end.child.branch.end().child.branch != self ]
         assert len(ends) == 1
         return ends[0]
 
@@ -187,6 +191,11 @@ class Branch ( list ) :
 
     def __str__ ( self ) :
         return self.name
+
+    def pretty ( self ) :
+        if len(str(self)) > 40 :
+            return str(self)[:40] + " ..."
+        return str(self)
 
     def relations ( self ) :
         sources = []
@@ -306,8 +315,11 @@ class Branch ( list ) :
     def report ( self , branches=False ) :
         output = [ self.name[:25] , len(self.commits()) , len(self.merges()) ]
         if branches :
+          if len(self) > 0 :
             sources = self.relations()[0]
             output.extend( ( self.source() , len(sources) , self.target() ) )
+          else :
+            output.extend( ( "" , -1 , "" ) )
         return tuple(output)
 
     def as_var ( self ) :
@@ -373,12 +385,15 @@ class Repository ( dict ) :
     self.order = []
     self.branches = []
 
-    cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H %ae %ce %s"'] , stdout=subprocess.PIPE )
+    cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H \"%ae\" \"%ce\" %s"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
     while line[:-1] :
         sha , author , committer , message = line[:-1].strip('"').split(None, 3)
+        author = author.strip('"')
+        committer = committer.strip('"')
         self[sha] = Commit( sha , author , committer , message )
         line = cmd.stdout.readline()
+        if len(self) % 200 == 0  : os.sys.stdout.write( "%4d commits read\r" % len(self) )
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--date-order', '--reverse', '--format="%H %at %ct %P"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -389,6 +404,7 @@ class Repository ( dict ) :
             raise Exception( "Incorrect input ordering" )
         self.order.append( self[sha] )
         line = cmd.stdout.readline()
+        if len(self.order) % 200 == 0  : os.sys.stdout.write( "%4d commits ordered\r" % len(self.order) )
 
     self.set_childs()
 
@@ -452,18 +468,22 @@ class Repository ( dict ) :
       indirect = 0
       multisource = 0
       mergeconflict = 0
+      if details :
+          if not os.path.isdir( 'branches' ) :
+              os.mkdir( 'branches' )
       for branch in self.branches :
           dump = False
           if branch.is_primary() or branch.is_release() :
               continue
-          if branch.end().child and branch.end().forks :
-              for child in branch.end().forks :
+          end = branch.end()
+          if end.child and end.forks :
+              for child in end.forks :
                 if child.branch and child.branch.begin() and child.branch.begin().parent :
-                  if child.branch.begin().parent == branch.end() :
+                  if child.branch.begin().parent == end :
                       reutilized += 1
                       dump = True
-          if branch.end().child and branch.end().parents :
-              if branch.end().parents[0] == branch.end().child.parent :
+          if end.child and end.parents :
+              if end.parents[0] == end.child.parent :
                   mergeconflict += 1
                   dump = True
           source = branch.source()
@@ -565,14 +585,15 @@ class Repository ( dict ) :
                     commit.parents[0].forks.append( commit )
                 if merged.group('target') :
                     if not [ b for (c,b) in branches if c == commit ] :
-                        target = self.new_branch(merged.group('target').strip("'"))
+                        target = self.new_branch(merged.group('target').strip("'")+" [auto]")
                         branches.append( ( commit.parent , target ) )
                         commit.parent.set_branch(target, commit)
                     else :
                         if commit.branch.name != merged.group('target').strip("'") :
-                            print "WARNING : '%s' not set on commit %s, already on '%s'" % ( merged.group('target').strip("'") , commit.sha , commit.branch )
+                            print "WARNING : '%s [auto]' not set on commit %s, already on '%s'" % ( merged.group('target').strip("'") , commit.sha , commit.branch.pretty() )
 
     for sha,branchname in get_branches() :
+        if not sha in self : continue
         match = [ B for B in branches if B[0] == self[sha] ]
         if match :
             c,b = match[0]
@@ -584,7 +605,7 @@ class Repository ( dict ) :
                 continue
             # This case only might arise when remote tips are merged into local-only branches
             print "WARNING : branch '%s' overwritten by '%s' at %s" % ( b.name , branchname , sha )
-            assert len(b) < 2
+            assert len(b) == 1
             self[sha].branch = None
             self.branches.remove(b)
             branches.remove((c,b))
@@ -592,6 +613,7 @@ class Repository ( dict ) :
         branches.append( ( self[sha] , branch ) )
         self[sha].set_branch( branch )
 
+    # Final search for merge commits without standard messages
     n = 0
     for commit in self.values() :
         for c in commit.parents :
@@ -600,14 +622,19 @@ class Repository ( dict ) :
                 branch = self.new_branch("removed %s" % n)
                 branches.append( ( c , branch ) )
                 c.set_branch( branch , commit )
-            elif c.child != commit and commit not in c.forks :
+            elif commit not in c.get_childs() :
                 c.forks.append( commit )
-    if n : print "WARNING : %d removed branch not automatically detected" % n
+    if n : print "WARNING : %d removed branches not automatically detected" % n
 
     # All branches detected at this point
 
+    print
+    cnt = 1
     for c,branch in branches :
+        os.sys.stdout.write( "%2d %% ancestry, branch: %-40s\r" % ( 100*cnt/len(branches) , str(branch)[:40] ) )
+        cnt += 1
         branch.ancestry( c )
+    print
 
     self.order.reverse()
     for c in self.order :
@@ -620,7 +647,10 @@ class Repository ( dict ) :
 
     empty = [ branch for branch in self.branches if len(branch) == 0 ]
     if empty :
-        print "ERROR : generated empty branches %s" % ", ".join(map(str,empty))
+        if len(empty) > 20 :
+            print "ERROR : generated %d empty branches" % len(empty)
+        else :
+            print "ERROR : generated empty branches\n\t%s" % " \n\t".join(map(str,empty))
         for branch in empty :
             self.branches.remove(branch)
 
