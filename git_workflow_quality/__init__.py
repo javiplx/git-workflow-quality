@@ -447,7 +447,11 @@ class Repository ( dict ) :
                   output['conflict'] += 1
                   dump = True
           source = branch.source()
+          if source != '<Initial>' :
+              source = [ b for b in self.branches if b.name == source ][0]
           target = branch.target()
+          if target != '<Final>' :
+              target = [ b for b in self.branches if b.name == target ][0]
           sources , targets = branch.relations()
           if targets :
               output['multitarget'] += 1
