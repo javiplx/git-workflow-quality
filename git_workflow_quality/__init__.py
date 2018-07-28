@@ -645,25 +645,27 @@ class Repository ( dict ) :
             branch.ancestry( c )
     self.order.reverse()
 
-    empty = [ branch for branch in self.branches if len(branch) == 0 ]
-    if empty :
-        if len(empty) > 20 :
-            print "ERROR : generated %d empty branches" % len(empty)
-        else :
-            print "ERROR : generated empty branches\n\t%s" % " \n\t".join(map(str,empty))
-        for branch in empty :
+    n , m = 0 , 0
+    # Remove items within the loop is not safe
+    __branches = [ branch for branch in self.branches ]
+    for branch in __branches :
+        if len(branch) == 0 :
             self.branches.remove(branch)
-
-    n = 0
-    # Running in a single loop to detect empty branches seems to produce bad side effects
-    for branch in self.branches :
+	    m += 1
+	    continue
         source = branch.begin().parent
-        if source and source.child and source.child.branch == branch :
+        if not source : continue
+        if ( source.child and source.child.branch == branch ) or \
+                branch.name.startswith( source.branch.name ) or source.branch.name.startswith( branch.name ) :
+            source.set_child( branch.begin() )
             for commit in list(branch) :
-                    source.branch.append( commit )
+                source.branch.append( commit )
             assert len(branch) == 0
             self.branches.remove(branch)
+            source.branch.name = branch.name
             n += 1
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
+    if m :
+        print "ERROR : generated %d empty branches" % m
 
