@@ -113,7 +113,7 @@ class Branch ( list ) :
         ends = [ c for c in list.__iter__(self) if not c.child ]
         if not ends :
             ends = [ c for c in list.__iter__(self) if c.child.branch != self ]
-            if not ends :
+            if len(ends) != 1 :
                 # This just searches end on direct childs, and will not detect indirect merge-backs
                 ends = [ end for end in ends if not end.child or not end.child.branch.end().child or end.child.branch.end().child.branch != self ]
         assert len(ends) == 1
@@ -663,16 +663,24 @@ class Repository ( dict ) :
             self.branches.remove(branch)
             m += 1
             continue
-        source = branch.begin().parent
-        if not source : continue
-        if ( source.child and source.child.branch == branch ) or \
-                branch.name.startswith( source.branch.name ) or source.branch.name.startswith( branch.name ) :
+
+        begin = branch.begin()
+        if not begin.parent : continue
+
+        # Concatenation happens in two cases :
+        #   incoming merge : a parent commit whose single child is the first commit on branch
+        #   outgoing merge : the first commit has a single parent, and only one of their childs has a single parent
+        # We filter on candidates number, as the second condition is matched by standard branch forking
+        candidates = [ c for c in begin.get_parents() if not c.forks and c.child == begin ] + [ c.parent for c in begin.parent.get_childs() if not begin.parents and not c.parents ]
+
+        if len(candidates) == 1 :
+            source = candidates[0]
             source.set_child( branch.begin() )
             for commit in list(branch) :
                 source.branch.append( commit )
-            assert len(branch) == 0
             self.branches.remove(branch)
-            source.branch.name = branch.name
+            if len(source.branch.name) > len(branch.name) :
+                source.branch.name = branch.name
             n += 1
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
