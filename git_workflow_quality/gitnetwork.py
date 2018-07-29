@@ -82,12 +82,12 @@ def graph ( repo , args , filename='commits.html' ) :
 
     shown_branches = canvas( repo , filename )
 
-    while [ b for b in shown_branches.values() if b ] and repo.graphed != 0 :
+    while [ b for b in shown_branches.values() if b ] and repo.graphed > 0 :
         for commit in [ b for b in shown_branches.values() if b ] :
             backward_plot( repo , commit , shown_branches , shown_branches.fd )
 
-    if args.limit > 0 and repo.graphed == 0 :
-        print "\nOnly %s commits shown in graph" % args.limit
+    if args.limit > 0 and repo.graphed <= 0 :
+        print "\nOnly around %d%% commits shown in graph" % ( 100.0 * args.limit / len(repo) )
 
     shown_branches.close()
 
