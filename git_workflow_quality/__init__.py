@@ -661,8 +661,8 @@ class Repository ( dict ) :
     for branch in __branches :
         if len(branch) == 0 :
             self.branches.remove(branch)
-	    m += 1
-	    continue
+            m += 1
+            continue
         source = branch.begin().parent
         if not source : continue
         if ( source.child and source.child.branch == branch ) or \

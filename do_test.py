@@ -38,6 +38,16 @@ else :
 os.chdir('../..')
 
 
+os.chdir( 'tests/multitarget.git' )
+repo = git_workflow_quality.Repository()
+count = len(repo.branches)
+if count == 4 :
+    ret += ok( "branch concatenation working" )
+else :
+    ret += fail( "branch concatenation produced %d branches" % count )
+os.chdir('../..')
+
+
 def test_event ( event ) :
     os.chdir( 'tests/%s.git' % event )
     repo = git_workflow_quality.Repository()
