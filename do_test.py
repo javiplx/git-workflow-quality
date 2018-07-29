@@ -48,6 +48,26 @@ else :
 os.chdir('../..')
 
 
+os.chdir( 'tests/branchcount.git' )
+repo = git_workflow_quality.Repository()
+count = len(repo.branches)
+if count == 5 :
+    ret += ok( "branch count working" )
+else :
+    ret += fail( "counted %d branches" % count )
+os.chdir('../..')
+
+
+os.chdir( 'tests/complexnetwork.git' )
+repo = git_workflow_quality.Repository()
+count = len(repo.branches)
+if count == 8 :
+    ret += ok( "complex branches properly concatenated" )
+else :
+    ret += fail( "complex concatenation produced %d branches" % count )
+os.chdir('../..')
+
+
 def test_event ( event ) :
     os.chdir( 'tests/%s.git' % event )
     repo = git_workflow_quality.Repository()
