@@ -429,6 +429,14 @@ class Repository ( dict ) :
           self.branches.append( Branch(branchname, orphan) )
           return self.branches[-1]
 
+  def join_branch ( self , source , branch ) :
+        source.set_child( branch.begin() )
+        for commit in list(branch) :
+            source.branch.append( commit )
+        self.branches.remove(branch)
+        if len(source.branch.name) > len(branch.name) :
+            source.branch.name = branch.name
+
   def events( self , details=False) :
       output = ['']
       event_list , msgs = self.event_list( details )
@@ -667,6 +675,13 @@ class Repository ( dict ) :
         begin = branch.begin()
         if not begin.parent : continue
 
+        source = begin.parent
+        if not source.forks and not begin.parents :
+            # This is in fact a plain commit with a single edge. As ancestry assigns childs, it cannot be detected there
+            self.join_branch( source , branch )
+            n += 1
+            continue
+
         # Concatenation happens in two cases :
         #   incoming merge : a parent commit whose single child is the first commit on branch
         #   outgoing merge : the first commit has a single parent, and only one of their childs has a single parent
@@ -674,13 +689,7 @@ class Repository ( dict ) :
         candidates = [ c for c in begin.get_parents() if not c.forks and c.child == begin ] + [ c.parent for c in begin.parent.get_childs() if not begin.parents and not c.parents ]
 
         if len(candidates) == 1 :
-            source = candidates[0]
-            source.set_child( branch.begin() )
-            for commit in list(branch) :
-                source.branch.append( commit )
-            self.branches.remove(branch)
-            if len(source.branch.name) > len(branch.name) :
-                source.branch.name = branch.name
+            self.join_branch ( candidates[0] , branch )
             n += 1
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
