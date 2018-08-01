@@ -102,6 +102,9 @@ class Branch ( list ) :
     def stats ( self ) :
         return len(self), len(self.commits()), len(self.merges())
 
+    def matches ( self , other ) :
+        return self.name.startswith( other.name ) or other.name.startswith( self.name )
+
     def begin ( self ) :
         begins = [ c for c in list.__iter__(self) if not c.parent ]
         if not begins :
@@ -684,13 +687,15 @@ class Repository ( dict ) :
 
         # Concatenation happens in two cases :
         #   incoming merge : a parent commit whose single child is the first commit on branch
-        #   outgoing merge : the first commit has a single parent, and only one of their childs has a single parent
+        #   outgoing merge : the first commit has a single parent, and this is the only one of their childs with a single parent
         # We filter on candidates number, as the second condition is matched by standard branch forking
-        candidates = [ c for c in begin.get_parents() if not c.forks and c.child == begin ] + [ c.parent for c in begin.parent.get_childs() if not begin.parents and not c.parents ]
+        candidates = [ c for c in begin.get_parents() if not c.forks ] + [ c.parent for c in begin.parent.get_childs() if not begin.parents and not c.parents ]
 
-        if len(candidates) == 1 :
-            self.join_branch ( candidates[0] , branch )
+        if len(candidates) == 1 and branch.matches( candidates[0].branch ) :
+            self.join_branch( candidates[0] , branch )
             n += 1
+            continue
+
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
     if m :
