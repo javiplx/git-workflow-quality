@@ -688,8 +688,9 @@ class Repository ( dict ) :
         # Some fast re-merges are quite difficult to identify heuristically
         if source.forks and begin.parents and begin.parents[0] in source.get_childs() :
             matches = [ c for c in begin.get_parents() if branch.matches( c.branch ) ]
-            if matches :
+            if len(matches) == 1 and not matches[0].branch.is_primary() :
                 self.join_branch ( matches[0] , branch )
+                n += 1
             continue
 
         # Concatenation happens in two cases :
