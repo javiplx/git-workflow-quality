@@ -1,4 +1,5 @@
 
+import git_workflow_quality
 
 import sys
 
@@ -22,7 +23,7 @@ var gitgraph = new GitNetwork(%d);
         self.fd = open( filename , 'w' )
         self.fd.write( self.head % len(repo) )
         dict.__init__( self )
-        self._rows = [b for b in repo.branches if b.is_primary()]
+        self._rows = [ repo.get_branch(name) for name in git_workflow_quality.Repository.primary ]
         self.reserved = len(self._rows)
         self.HEAD = None
         for branch in repo.branches :

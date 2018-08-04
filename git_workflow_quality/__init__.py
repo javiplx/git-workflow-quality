@@ -25,7 +25,7 @@ class Commit :
         if branch <= self.branch :
             # self.branch has a higher weight respect to branch
             return
-        if self.branch and not branch.is_primary() :
+        if self.branch and not branch._primary :
             print "WARNING : cannot assign %s to %s, already owned by %s" % ( branch.pretty() , self.sha , self.branch.pretty() )
             return
         branch.append( self )
@@ -82,13 +82,12 @@ class Commit :
 
 class Branch ( list ) :
 
-    primary = ('master', 'develop')
-
-    def __init__ ( self , branchname , orphan=False ) :
+    def __init__ ( self , branchname , primary, orphan=False ) :
         self.name = branchname
         self.orphan = orphan
         self.rendered = False
         list.__init__( self )
+        self._primary = primary
 
     def __hash__ ( self ) :
         return self.name.__hash__()
@@ -131,9 +130,6 @@ class Branch ( list ) :
             return '<Final>'
         return target.branch.name
 
-    def is_primary ( self ) :
-        return self.name in Branch.primary
-
     def is_release ( self ) :
         return self.name.startswith('release')
 
@@ -145,9 +141,9 @@ class Branch ( list ) :
             return False
         if self == other :
             return False
-        if self.is_primary() and other.is_primary() :
-            return Branch.primary.index(other.name) < Branch.primary.index(self.name)
-        if other.is_primary() :
+        if self._primary and other._primary :
+            return Repository.primary.index(other.name) < Repository.primary.index(self.name)
+        if other._primary :
             return True
         return False
 
@@ -157,7 +153,7 @@ class Branch ( list ) :
         commit = commit.parent
         while commit :
             if commit.branch :
-                if not self.is_primary() :
+                if not self._primary :
                     commit.add_child( child )
                     break
                 elif self <= commit.branch :
@@ -326,8 +322,8 @@ class Branch ( list ) :
         return "branch_" + self.name.replace(' (2)','_dup').replace('/', '_slash_' ).replace('-', '_dash_').replace('.', '_dot_').replace(' ', '_white_').replace(':', '_colon_').replace('&', '_amp_').replace('#', '_hashtag_').replace('[', '_bra_').replace(']', '_ket_')
 
     def render ( self , fd , parent=None , shown_branches=None , force=False ) :
-        if self.is_primary() and not force :
-            column = Branch.primary.index(self.name)
+        if self._primary and not force :
+            column = Repository.primary.index(self.name)
         else :
             column = shown_branches.index(self)
         json = 'name:"%s", column:%d' % ( str(self).replace(' (2)', ' [dup]', 1).replace(' (2)', '') , column )
@@ -380,6 +376,8 @@ def get_branches () :
 
 class Repository ( dict ) :
 
+  primary = ( 'master' ,)
+
   def __init__ ( self ) :
 
     self.order = []
@@ -418,15 +416,20 @@ class Repository ( dict ) :
               if len(self[sha].parents) > 1 :
                   raise Exception( "Octopus merges on %s from %s not handled" % ( self[sha].sha , ", ".join([c.sha for c in self[sha].parents]) ) )
 
+  def get_branch ( self , branchname ) :
+      for branch in self.branches :
+          if branch.name == branchname :
+              return branch
+      return None
+
   def new_branch ( self , branchname , orphan=False ) :
-      match = [ branch for branch in self.branches if branch.name == branchname ]
+      match = self.get_branch(branchname)
       if match :
-          assert len(match) == 1
-          if match[0].is_primary() :
-              return match[0]
+          if match._primary :
+              return match
           return self.new_branch( "%s (2)" % branchname , orphan )
       else :
-          self.branches.append( Branch(branchname, orphan) )
+          self.branches.append( Branch(branchname, branchname in Repository.primary, orphan) )
           return self.branches[-1]
 
   def events( self , details=False) :
@@ -454,7 +457,7 @@ class Repository ( dict ) :
       for commit in self.values() :
           # Skip if main child is not a merge?
           # Do we really want to skip for primary branches??
-          if not commit.forks or not commit.child or ( commit.branch and commit.branch.is_primary() ) :
+          if not commit.forks or not commit.child or ( commit.branch and commit.branch._primary ) :
               continue
           merges = []
           if commit.child.parents :
@@ -487,7 +490,7 @@ class Repository ( dict ) :
 
       for branch in self.branches :
           dump = False
-          if branch.is_primary() or branch.is_release() :
+          if branch._primary or branch.is_release() :
               continue
           end = branch.end()
           if end.child and end.forks :
@@ -527,7 +530,7 @@ class Repository ( dict ) :
   def report( self , details=False) :
       output = ['']
       output.append( "Number of commits:      %s" % len(self) )
-      output.append( "Number of branches:     %s" % ( len(self.branches) - len([b for b in self.branches if b.is_primary()]) ) )
+      output.append( "Number of branches:     %s" % ( len(self.branches) - len([b for b in self.branches if b._primary]) ) )
       output.append( "# initial commits:      %s" % len([c for c in self.values() if not c.parent ]) )
       output.append( "Number of merges:       %s" % len([c for c in self.values() if c.parents]) )
       output.append( "Ammended commits:       %s" % len([c for c in self.values() if c.author != c.committer and not c.parents]) )
@@ -537,7 +540,7 @@ class Repository ( dict ) :
       report_fmt = "%25s %8d   %7d    %20s %+03d - %-20s"
       output.append( "" )
       output.append( "%-25s %8s   %7s" % ( 'PRIMARY' , '#commits' , '#merges' ) )
-      for branch in [ b for b in self.branches if b.is_primary() ] :
+      for branch in [ b for b in self.branches if b._primary ] :
           output.append( report_fmt % branch.report(True) )
 
       releases = [ b for b in self.branches if b.is_release() ]
@@ -559,7 +562,7 @@ class Repository ( dict ) :
                   if release.commits() :
                       output[-1] += " *** standard commits (%d)" % len(release.commits())
 
-      branches = [ b for b in self.branches if not b.is_primary() and not b.is_release() ]
+      branches = [ b for b in self.branches if not b._primary and not b.is_release() ]
       if branches :
           output.append( "" )
           output.append( "%-10s %8s   %7s   (%d branches)" % ( 'TOPIC' , '#commits' , '#merges' , len(branches) ) )
@@ -609,7 +612,7 @@ class Repository ( dict ) :
             c,b = match[0]
             if branchname == b.name :
                 continue
-            if b.is_primary() :
+            if b._primary :
                 # This case usually applies to remote branches created but with no commits pushed
                 print "WARNING : drop branch '%s' laid over '%s' at %s" % ( branchname , b.name , sha )
                 continue

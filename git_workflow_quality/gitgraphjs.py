@@ -91,7 +91,7 @@ def graph ( repo , args , filename='commits.html' ) :
     for origin in origins :
         # FIXME: multiple origins could be owned by the same branch ?
         shown_branches.append( origin.branch , fd )
-    shown_branches.reserved = len([b for b in repo.branches if b.is_primary()])
+    shown_branches.reserved = len([b for b in repo.branches if b._primary])
 
     if args.graph == 'date' :
         chrono_plot(repo, fd)
@@ -191,7 +191,7 @@ def chrono_plot ( repo , fd=sys.stdout) :
             for p in c.parents :
                 if p.branch in shown_branches :
                   # The condition below is an ugly hack for some back & forth merge scenarios
-                  if not p.branch.is_primary() :
+                  if not p.branch._primary :
                     shown_branches.remove( p.branch )
         for f in c.forks :
             if f.branch and f.branch not in shown_branches :
