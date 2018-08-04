@@ -626,6 +626,12 @@ class Repository ( dict ) :
         branches.append( ( self[sha] , branch ) )
         self[sha].set_branch( branch )
 
+    for branch in self.branches :
+        if branch.name.endswith( ' [auto]' ) :
+            branch_name = branch.name[:-7]
+            if not [ b for b in self.branches if b.name == branch_name ] :
+                branch.name = branch_name
+
     # Final search for merge commits without standard messages
     n = 0
     for commit in self.values() :
