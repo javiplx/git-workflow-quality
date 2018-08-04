@@ -685,24 +685,16 @@ class Repository ( dict ) :
             n += 1
             continue
 
-        # Some fast re-merges are quite difficult to identify heuristically
-        if source.forks and begin.parents and begin.parents[0] in source.get_childs() :
-            matches = [ c for c in begin.get_parents() if branch.matches( c.branch ) ]
-            if len(matches) == 1 and not matches[0].branch.is_primary() :
-                self.join_branch ( matches[0] , branch )
-                n += 1
-            continue
-
         # Concatenation happens in two cases :
         #   incoming merge : a parent commit whose single child is the first commit on branch
         #   outgoing merge : the first commit has a single parent, and this is the only one of their childs with a single parent
-        # We filter on candidates number, as the second condition is matched by standard branch forking
         candidates = [ c for c in begin.get_parents() if not c.forks ] + [ c.parent for c in begin.parent.get_childs() if not begin.parents and not c.parents ]
+        if len(candidates) != 1 : continue
 
-        if len(candidates) == 1 and branch.matches( candidates[0].branch ) :
-            self.join_branch( candidates[0] , branch )
+        source = candidates[0]
+        if source.branch.end() == source and branch.matches( source.branch ) :
+            self.join_branch( source , branch )
             n += 1
-            continue
 
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
