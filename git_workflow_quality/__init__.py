@@ -44,6 +44,8 @@ class Commit :
             self.child = child
         elif child not in self.forks :
             self.forks.append( child )
+        if not child.child and child.forks :
+            child.child = child.forks.pop(0)
 
     def get_parents ( self , full=True ) :
         parents = []
