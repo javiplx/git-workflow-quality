@@ -381,12 +381,31 @@ def get_branches () :
             fd.close()
     return branches
 
+class BranchList ( list ) :
+
+    def __init__ ( self ) :
+        self.names = []
+        list.__init__( self )
+
+    def get ( self , name ) :
+        match = [ b for b in self if b.name == name ]
+        if item.name in self.names :
+            assert len(match) == 1
+            return match[0]
+        assert not match
+        return None
+
+    def append ( self , item ) :
+        if item.name in self.names : assert False
+        self.names.append( item.name )
+        list.append( self , item )
+
 class Repository ( dict ) :
 
   def __init__ ( self ) :
 
     self.order = []
-    self.branches = []
+    self.branches = BranchList()
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H \"%ae\" \"%ce\" %s"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -422,8 +441,8 @@ class Repository ( dict ) :
                   raise Exception( "Octopus merges on %s from %s not handled" % ( self[sha].sha , ", ".join([c.sha for c in self[sha].parents]) ) )
 
   def new_branch ( self , branchname , orphan=False ) :
-      match = [ branch for branch in self.branches if branch.name == branchname ]
-      if match :
+      if branchname in self.branches.names :
+          match = [ branch for branch in self.branches if branch.name == branchname ]
           assert len(match) == 1
           if match[0].is_primary() :
               return match[0]
