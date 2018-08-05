@@ -685,6 +685,10 @@ class Repository ( dict ) :
             n += 1
             continue
 
+        if [ c for c in begin.get_childs() if c.branch == source.branch ] :
+            print "WARNING : %s merged back into %s" % ( begin.branch.pretty() , source.branch.pretty() )
+            continue
+
         # Concatenation happens in two cases :
         #   incoming merge : a parent commit whose single child is the first commit on branch
         #   outgoing merge : the first commit has a single parent, and this is the only one of their childs with a single parent
