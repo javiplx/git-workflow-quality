@@ -374,6 +374,7 @@ class Repository ( dict ) :
     self.order = []
     self.branches = []
     self.last = last
+    self.discarded = {}
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H %ae %ce %s"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -398,7 +399,7 @@ class Repository ( dict ) :
 
     for commit in self.values() :
         if commit.author_date < self.min_time :
-            del self[commit.sha]
+            self.discarded[commit.sha] = self.pop(commit.sha)
         else :
             if commit.parent and commit.parent.author_date < self.min_time :
                 commit.parent = None
@@ -592,8 +593,8 @@ class Repository ( dict ) :
 
     for sha,branchname in get_branches() :
         if sha not in self :
-            print "WARNING : Branch '%s' has a too old tip, not included" % branchname
-            continue
+            print "WARNING : Recovering tip commit for branch '%s'" % branchname
+            self[sha] = self.discarded[sha]
         match = [ B for B in branches if B[0] == self[sha] ]
         if match :
             c,b = match[0]
