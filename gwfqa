@@ -11,13 +11,14 @@ if __name__ == '__main__' :
     parser.add_argument('--detailed', action='store_true', help='Show per-branch statistics')
     parser.add_argument('--graph', choices=['topo', 'date', 'backwards'], help='Generate gitgraphjs file')
     parser.add_argument('--limit', type=int, default=-1, help='Number of commits to show in plot (-1 to plot all)')
+    parser.add_argument('--last', type=int, default=-1, help='Reduce analysis just to last commits (-1 means use all)')
     parser.add_argument('--dot', help='Express branch relations in dot language')
     args = parser.parse_args()
 
     if args.limit != -1 and args.graph != 'backwards' :
         print "WARNING : --limit does only apply to backwards graph"
 
-    repo = git_workflow_quality.Repository()
+    repo = git_workflow_quality.Repository(args.last)
 
     print repo.report(args.detailed)
 
