@@ -369,7 +369,7 @@ def get_branches () :
 
 class Repository ( dict ) :
 
-  def __init__ ( self , last ) :
+  def __init__ ( self , last=-1 ) :
 
     self.order = []
     self.branches = []
