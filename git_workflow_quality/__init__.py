@@ -374,6 +374,7 @@ class Repository ( dict ) :
     self.order = []
     self.branches = []
     self.last = last
+    self.min_time = -1
     self.discarded = {}
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H %ae %ce %s"'] , stdout=subprocess.PIPE )
@@ -393,9 +394,14 @@ class Repository ( dict ) :
         self.order.append( self[sha] )
         line = cmd.stdout.readline()
 
-    self.min_time = self.order[-min(self.last,len(self))].author_date
-    self.partial = 100 * self.last / len(self)
-    self.order = self.order[-self.last:]
+    if self.last > len(self) :
+        print "WARNING : repository only has %d commits, 'last' has no effect" % self.last
+        self.last = -1
+
+    if self.last > 0 :
+        self.min_time = self.order[-min(self.last,len(self))].author_date
+        self.partial = 100 * self.last / len(self)
+        self.order = self.order[-self.last:]
 
     for commit in self.values() :
         if commit.author_date < self.min_time :
