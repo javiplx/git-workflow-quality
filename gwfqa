@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import git_workflow_quality
 
@@ -14,8 +14,8 @@ if __name__ == '__main__' :
     parser.add_argument('--dot', help='Express branch relations in dot language')
     args = parser.parse_args()
 
-    if args.limit and not args.graph :
-        print "WARNING : --limit does only apply to graphs"
+    if args.limit != -1 and args.graph != 'backwards' :
+        print "WARNING : --limit does only apply to backwards graph"
 
     repo = git_workflow_quality.Repository()
 
