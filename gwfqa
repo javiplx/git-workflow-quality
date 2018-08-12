@@ -10,10 +10,11 @@ if __name__ == '__main__' :
     parser = argparse.ArgumentParser(description='Extract simple analytics from git repository')
     parser.add_argument('--detailed', action='store_true', help='Show per-branch statistics')
     parser.add_argument('--graph', choices=['topo', 'date', 'backwards'], help='Generate gitgraphjs file')
+    parser.add_argument('--no-concatenate', dest='concatenate', action='store_false', help='Express branch relations in dot language')
     parser.add_argument('--dot', help='Express branch relations in dot language')
     args = parser.parse_args()
 
-    repo = git_workflow_quality.Repository()
+    repo = git_workflow_quality.Repository(args.concatenate)
 
     print repo.report(args.detailed)
 

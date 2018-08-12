@@ -404,10 +404,11 @@ class BranchList ( list ) :
 
 class Repository ( dict ) :
 
-  def __init__ ( self ) :
+  def __init__ ( self , concatenate=True ) :
 
     self.order = []
     self.branches = BranchList()
+    self.concatenated = concatenate
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H \"%ae\" \"%ce\" %s"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -431,6 +432,9 @@ class Repository ( dict ) :
         if len(self.order) % 200 == 0  : os.sys.stdout.write( "%4d commits ordered\r" % len(self.order) )
 
     self.set_childs()
+
+    if self.concatenated :
+        self.concatenated = self.concatenation()
 
   def set_params ( self , sha , line ) :
       self[sha].author_date = int(line[0])
@@ -468,12 +472,19 @@ class Repository ( dict ) :
       if msgs : output.extend( msgs )
 
       output.append( "Branch events" )
+      if self.concatenated and self.base_events : output[-1] += "   %+10d branches" % self.concatenated
       output.append( "  multitarget   %4d" % event_list['multitarget'] )
+      if self.concatenated and self.base_events : output[-1] += "  %4d" % self.base_events['multitarget']
       output.append( "  reutilized    %4d" % event_list['reutilized'] )
+      if self.concatenated and self.base_events : output[-1] += "  %4d" % self.base_events['reutilized']
       output.append( "  multimerged   %4d" % event_list['multimerged'] )
+      if self.concatenated and self.base_events : output[-1] += "  %4d" % self.base_events['multimerged']
       output.append( "  indirect      %4d" % event_list['indirect'] )
+      if self.concatenated and self.base_events : output[-1] += "  %4d" % self.base_events['indirect']
       output.append( "  multisource   %4d" % event_list['multisource'] )
+      if self.concatenated and self.base_events : output[-1] += "  %4d" % self.base_events['multisource']
       output.append( "  conflict      %4d" % event_list['conflict'] )
+      if self.concatenated and self.base_events : output[-1] += "  %4d" % self.base_events['conflict']
       output.append( "" )
 
       return "\n".join(output)
@@ -687,14 +698,23 @@ class Repository ( dict ) :
             branch.ancestry( c )
     self.order.reverse()
 
-    n , m = 0 , 0
+    m = 0
+    # Remove items within the loop is not safe
+    __branches = [ branch for branch in self.branches if len(branch) == 0 ]
+    for branch in __branches :
+        self.branches.remove(branch)
+        m += 1
+    if m :
+        print "ERROR : generated %d empty branches" % m
+
+  def concatenation ( self ) :
+
+    self.base_events , drop = self.event_list()
+
+    n = 0
     # Remove items within the loop is not safe
     __branches = [ branch for branch in self.branches ]
     for branch in __branches :
-        if len(branch) == 0 :
-            self.branches.remove(branch)
-            m += 1
-            continue
 
         begin = branch.begin()
         if not begin.parent : continue
@@ -723,6 +743,8 @@ class Repository ( dict ) :
 
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
-    if m :
-        print "ERROR : generated %d empty branches" % m
+    else :
+        self.base_events = []
+
+    return n
 
