@@ -23,17 +23,25 @@ ret = 0
 os.chdir('tests/test1.git')
 repo = git_workflow_quality.Repository()
 
-c = repo['b8285f2f001cfad3eacfb5c642623822f5fb60a1']
-if c.branch.name == 'master' :
-    ok( "%s owned by master" % c.sha )
+sha = 'b8285f2f001cfad3eacfb5c642623822f5fb60a1'
+if sha in repo :
+    ret += ok( "Initial commit included" )
 else :
-    ret += fail( "%s on branch" % ( c.sha , c.branch.name ) )
+    ret += fail( "commit %s discarded" % sha )
 
-c = repo['3dec0a264f6b28901cf2151e70d5691b696a4e9d']
-if c.forks and not c.child :
-    ret += fail( "%s got no child assigned" % c.sha )
+sha = 'b8285f2f001cfad3eacfb5c642623822f5fb60a1'
+c = repo.get(sha)
+if c and c.branch.name == 'master' :
+    ret += ok( "%s owned by master" % sha )
 else :
-    ret += ok( "child assigned to %s" % c.sha )
+    ret += fail( "%s not on master branch" % sha )
+
+sha = '3dec0a264f6b28901cf2151e70d5691b696a4e9d'
+c = repo.get(sha)
+if not c or ( c.forks and not c.child  ):
+    ret += fail( "%s got no child assigned" % sha )
+else :
+    ret += ok( "child assigned to %s" % sha )
 
 os.chdir('../..')
 

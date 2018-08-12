@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import git_workflow_quality
 
@@ -12,6 +12,8 @@ if __name__ == '__main__' :
     parser.add_argument('--primary', help='Ordered list with primary branches')
     parser.add_argument('--detailed', action='store_true', help='Show per-branch statistics')
     parser.add_argument('--graph', choices=['topo', 'date', 'backwards'], help='Generate gitgraphjs file')
+    parser.add_argument('--limit', type=int, default=-1, help='Number of commits to show in plot (-1 to plot all)')
+    parser.add_argument('--last', type=int, default=-1, help='Reduce analysis just to last commits (-1 means use all)')
     parser.add_argument('--dot', help='Express branch relations in dot language')
     args = parser.parse_args()
 
@@ -23,12 +25,15 @@ if __name__ == '__main__' :
     elif config.has_section('gwfqa') :
         git_workflow_quality.Repository.primary = config.get('gwfqa', 'primary').split(',')
 
-    repo = git_workflow_quality.Repository()
+    if args.limit != -1 and args.graph != 'backwards' :
+        print "WARNING : --limit does only apply to backwards graph"
+
+    repo = git_workflow_quality.Repository(args.last)
 
     print repo.report(args.detailed)
 
     if args.graph == 'backwards' :
-        git_workflow_quality.gitnetwork.graph( repo )
+        git_workflow_quality.gitnetwork.graph( repo , args )
     elif args.graph :
         git_workflow_quality.gitgraphjs.graph( repo , args )
 

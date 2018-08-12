@@ -2,6 +2,7 @@
 import gitgraphjs
 import gitnetwork
 
+import datetime
 import subprocess
 import re
 import os
@@ -378,10 +379,13 @@ class Repository ( dict ) :
 
   primary = ( 'master' ,)
 
-  def __init__ ( self ) :
+  def __init__ ( self , last=-1 ) :
 
     self.order = []
     self.branches = []
+    self.last = last
+    self.min_time = -1
+    self.discarded = {}
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--format="%H \"%ae\" \"%ce\" %s"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -403,6 +407,25 @@ class Repository ( dict ) :
         self.order.append( self[sha] )
         line = cmd.stdout.readline()
         if len(self.order) % 200 == 0  : os.sys.stdout.write( "%4d commits ordered\r" % len(self.order) )
+
+    if self.last > len(self) :
+        print "WARNING : repository only has %d commits, 'last' has no effect" % self.last
+        self.last = -1
+
+    if self.last > 0 :
+        self.min_time = self.order[-min(self.last,len(self))].author_date
+        self.partial = 100 * self.last / len(self)
+        self.order = self.order[-self.last:]
+
+    for commit in self.values() :
+        if commit.author_date < self.min_time :
+            self.discarded[commit.sha] = self.pop(commit.sha)
+        else :
+            if commit.parent and commit.parent.author_date < self.min_time :
+                commit.parent = None
+            if [ c for c in commit.parents if c.author_date < self.min_time ] :
+                assert len(commit.parents) == 1 # prevent octopus
+                commit.parents = ()
 
     self.set_childs()
 
@@ -529,6 +552,8 @@ class Repository ( dict ) :
 
   def report( self , details=False) :
       output = ['']
+      if self.last != -1 :
+          output.append( "\nAnalyzed only last %d commits (%d%%), starting on %s\n" % ( self.last , self.partial , datetime.datetime.fromtimestamp(self.min_time) ) )
       output.append( "Number of commits:      %s" % len(self) )
       output.append( "Number of branches:     %s" % ( len(self.branches) - len([b for b in self.branches if b._primary]) ) )
       output.append( "# initial commits:      %s" % len([c for c in self.values() if not c.parent ]) )
@@ -606,7 +631,9 @@ class Repository ( dict ) :
                             print "WARNING : '%s [auto]' not set on commit %s, already on '%s'" % ( merged.group('target').strip("'") , commit.sha , commit.branch.pretty() )
 
     for sha,branchname in get_branches() :
-        if not sha in self : continue
+        if sha not in self :
+            print "WARNING : Recovering tip commit for branch '%s'" % branchname
+            self[sha] = self.discarded[sha]
         match = [ B for B in branches if B[0] == self[sha] ]
         if match :
             c,b = match[0]

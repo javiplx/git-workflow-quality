@@ -77,13 +77,18 @@ var gitgraph = new GitNetwork(%d);
         self.fd.close()
 
 
-def graph ( repo , filename='commits.html' ) :
+def graph ( repo , args , filename='commits.html' ) :
+
+    repo.graphed = args.limit
 
     shown_branches = canvas( repo , filename )
 
-    while [ b for b in shown_branches.values() if b ] :
+    while [ b for b in shown_branches.values() if b ] and repo.graphed > 0 :
         for commit in [ b for b in shown_branches.values() if b ] :
             backward_plot( repo , commit , shown_branches , shown_branches.fd )
+
+    if args.limit > 0 and repo.graphed <= 0 :
+        print "\nOnly around %d%% commits shown in graph" % ( 100.0 * args.limit / len(repo) )
 
     shown_branches.close()
 
@@ -116,6 +121,7 @@ def backward_plot ( repo , commit , pending , fd=sys.stdout ) :
                 first = True
             if first :
                 fd.write( '%s.push("%s",[]);\n' % ( commit.branch.as_var() , commit.sha[:8] ) )
+                repo.graphed -= 1
             if not commit.parents :
                 first = False
         pending.HEAD = commit
