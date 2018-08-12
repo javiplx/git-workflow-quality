@@ -76,10 +76,10 @@ gitgraph_tail = """
 """
 
 
-def graph ( repo , mode='topo' , filename='commits.html' ) :
+def graph ( repo , args , filename='commits.html' ) :
 
-    if not mode in ( 'topo' , 'date' ) :
-        print "ERROR : unknown graph type '%s'" % mode
+    if not args.graph in ( 'topo' , 'date' ) :
+        print "ERROR : unknown graph type '%s'" % args.graph
         return
 
     fd = open( filename , 'w' )
@@ -93,9 +93,9 @@ def graph ( repo , mode='topo' , filename='commits.html' ) :
         shown_branches.append( origin.branch , fd )
     shown_branches.reserved = len([b for b in repo.branches if b.is_primary()])
 
-    if mode == 'date' :
+    if args.graph == 'date' :
         chrono_plot(repo, fd)
-    elif mode == 'topo' :
+    elif args.graph == 'topo' :
         while origins :
             commit = origins.pop(0)
             forward_plot(repo, commit, origins, fd)
