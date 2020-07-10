@@ -89,6 +89,20 @@ class Branch ( list ) :
         self.rendered = False
         list.__init__( self )
         self._primary = primary
+        self.altnames = [ self.name ]
+
+    def altname( self , names ) :
+        for name in names :
+            if any([name.startswith(alt) for alt in self.altnames]):
+                continue
+            self.altnames.append( name )
+
+    def picknames( self ) :
+        if len(self.altnames) > 1 :
+            self.altnames[:] = [alt for alt in self.altnames if alt.find('[auto]') == -1]
+            if len(self.altnames) > 1 :
+                self.altnames[:] = [alt for alt in self.altnames if not alt.startswith('removed ')]
+        return self.altnames
 
     def __hash__ ( self ) :
         return self.name.__hash__()
@@ -396,6 +410,7 @@ class Repository ( dict ) :
         self[sha] = Commit( sha , author , committer , message )
         line = cmd.stdout.readline()
         if len(self) % 200 == 0  : os.sys.stdout.write( "%4d commits read\r" % len(self) )
+    if len(self) > 200 : print
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--date-order', '--reverse', '--format="%H %at %ct %P"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -407,6 +422,7 @@ class Repository ( dict ) :
         self.order.append( self[sha] )
         line = cmd.stdout.readline()
         if len(self.order) % 200 == 0  : os.sys.stdout.write( "%4d commits ordered\r" % len(self.order) )
+    if len(self.order) > 200 : print
 
     if self.last > len(self) :
         print "WARNING : repository only has %d commits, 'last' has no effect" % self.last
@@ -708,8 +724,10 @@ class Repository ( dict ) :
                 source.branch.append( commit )
             assert len(branch) == 0
             self.branches.remove(branch)
-            source.branch.name = branch.name
+            source.branch.altname( branch.picknames() )
             n += 1
+    for branch in self.branches :
+        branch.name = branch.picknames()[0]
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
     if m :
