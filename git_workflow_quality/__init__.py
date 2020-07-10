@@ -710,7 +710,6 @@ class Repository ( dict ) :
                 source.branch.append( commit )
             assert len(branch) == 0
             self.branches.remove(branch)
-            source.branch.name = branch.name
             n += 1
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
