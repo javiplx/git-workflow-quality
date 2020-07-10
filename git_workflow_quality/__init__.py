@@ -89,6 +89,20 @@ class Branch ( list ) :
         self.rendered = False
         list.__init__( self )
         self._primary = primary
+        self.altnames = [ self.name ]
+
+    def altname( self , names ) :
+        for name in names :
+            if any([name.startswith(alt) for alt in self.altnames]):
+                continue
+            self.altnames.append( name )
+
+    def picknames( self ) :
+        if len(self.altnames) > 1 :
+            self.altnames[:] = [alt for alt in self.altnames if alt.find('[auto]') == -1]
+            if len(self.altnames) > 1 :
+                self.altnames[:] = [alt for alt in self.altnames if not alt.startswith('removed ')]
+        return self.altnames
 
     def __hash__ ( self ) :
         return self.name.__hash__()
@@ -710,7 +724,10 @@ class Repository ( dict ) :
                 source.branch.append( commit )
             assert len(branch) == 0
             self.branches.remove(branch)
+            source.branch.altname( branch.picknames() )
             n += 1
+    for branch in self.branches :
+        branch.name = branch.picknames()[0]
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
     if m :
