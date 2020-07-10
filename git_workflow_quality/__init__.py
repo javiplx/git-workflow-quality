@@ -396,6 +396,7 @@ class Repository ( dict ) :
         self[sha] = Commit( sha , author , committer , message )
         line = cmd.stdout.readline()
         if len(self) % 200 == 0  : os.sys.stdout.write( "%4d commits read\r" % len(self) )
+    if len(self) > 200 : print
 
     cmd = subprocess.Popen( ['git', 'log', '--all', '--date-order', '--reverse', '--format="%H %at %ct %P"'] , stdout=subprocess.PIPE )
     line = cmd.stdout.readline()
@@ -407,6 +408,7 @@ class Repository ( dict ) :
         self.order.append( self[sha] )
         line = cmd.stdout.readline()
         if len(self.order) % 200 == 0  : os.sys.stdout.write( "%4d commits ordered\r" % len(self.order) )
+    if len(self.order) > 200 : print
 
     if self.last > len(self) :
         print "WARNING : repository only has %d commits, 'last' has no effect" % self.last
