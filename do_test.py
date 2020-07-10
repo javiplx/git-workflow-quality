@@ -56,6 +56,54 @@ else :
 os.chdir('../..')
 
 
+os.chdir( 'tests/multitarget.git' )
+repo = git_workflow_quality.Repository()
+count = len(repo.branches)
+if count == 4 :
+    ret += ok( "branch concatenation working" )
+else :
+    ret += fail( "branch concatenation produced %d branches" % count )
+os.chdir('../..')
+
+
+os.chdir( 'tests/branchcount.git' )
+repo = git_workflow_quality.Repository()
+count = len(repo.branches)
+if count == 5 :
+    ret += ok( "branch count working" )
+else :
+    ret += fail( "counted %d branches" % count )
+os.chdir('../..')
+
+
+os.chdir( 'tests/complexnetwork.git' )
+repo = git_workflow_quality.Repository()
+count = len([ c for c in repo.values() if not c.child ])
+if count == 2 :
+    ret += ok( "open branches properly found" )
+else :
+    ret += fail( "found %d opened branches" % count )
+#
+count = repo.event_list()[0]['multimerged']
+if count == 1 :
+    ret += ok( "1 multimerged found" )
+else :
+    ret += fail( "%d multimerged found" % count )
+#
+count = repo.event_list()[0]['conflict']
+if count == 1 :
+    ret += ok( "1 conflict found" )
+else :
+    ret += fail( "%d conflict found" % count )
+#
+count = len(repo.branches)
+if count == 8 :
+    ret += ok( "complex branches properly concatenated" )
+else :
+    ret += fail( "complex concatenation produced %d branches" % count )
+os.chdir('../..')
+
+
 def test_event ( event ) :
     os.chdir( 'tests/%s.git' % event )
     repo = git_workflow_quality.Repository()
