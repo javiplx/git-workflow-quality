@@ -108,7 +108,6 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     first = True
     current_branch = c.branch
     while c.child :
-        end_of_branch = len([ C for C in c.get_childs() if C.branch == current_branch ]) == 0
         if c.parents :
             if [ p for p in c.get_parents() if not p.rendered ] :
                 pending.append(c)
@@ -123,8 +122,6 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
             elif c.forks :
                 c.render(fd)
             elif c.child and c.child.parents :
-                c.render(fd)
-            elif end_of_branch :
                 c.render(fd)
             else :
                 c.rendered = True
