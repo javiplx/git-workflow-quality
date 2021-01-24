@@ -443,15 +443,15 @@ class Repository ( dict ) :
         self.partial = 100 * self.last / len(self)
         self.order = self.order[-self.last:]
 
-    for commit in self.values() :
-        if commit.author_date < self.min_time :
-            self.discarded[commit.sha] = self.pop(commit.sha)
-        else :
-            if commit.parent and commit.parent.author_date < self.min_time :
-                commit.parent = None
-            if [ c for c in commit.parents if c.author_date < self.min_time ] :
-                assert len(commit.parents) == 1 # prevent octopus
-                commit.parents = ()
+        for commit in self.values() :
+            if commit.author_date < self.min_time :
+                self.discarded[commit.sha] = self.pop(commit.sha)
+            else :
+                if commit.parent and commit.parent.author_date < self.min_time :
+                    commit.parent = None
+                if [ c for c in commit.parents if c.author_date < self.min_time ] :
+                    assert len(commit.parents) == 1 # prevent octopus
+                    commit.parents = ()
 
     self.set_childs()
 
