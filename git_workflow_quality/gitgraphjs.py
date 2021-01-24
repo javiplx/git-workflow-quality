@@ -110,7 +110,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
     while c.child :
         if c.parents :
             if [ p for p in c.get_parents() if not p.rendered ] :
-                pending.append(c)
+                if c not in pending : pending.append(c)
                 break
             else :
                 if c in pending : pending.remove(c)
@@ -125,46 +125,25 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 c.render(fd)
             else :
                 c.rendered = True
-        break_it = False
         for target in c.forks :
-          if target in pending :
-              break_it = True
-          elif target.branch :
             if target.branch not in shown_branches :
                 shown_branches.append( target.branch , fd , current_branch )
+            if target not in pending :
                 pending.append( target )
-            else :
-                  # We just assume that target will appear on pending in the future
-                  break_it = True
-        if end_of_branch :
-            shown_branches.remove( current_branch )
-            for c in c.get_childs() :
-              if c.branch :
-                if c.branch not in shown_branches :
-                  shown_branches.append( c.branch , fd , current_branch )
-                elif c in pending :
-                    pending.remove(c)
-                else :
-                  # We just assume that target will appear on pending in the future
-                  break
-                forward_plot(repo, c, pending, fd)
-            break
         c = c.child
-        if break_it and c :
-            if c not in pending :
-                pending.append( c )
-            else :
-                pending.remove( c )
-                forward_plot(repo, c, pending, fd)
-            break
-    else :
+    else:
         if c.parents :
             if [ p for p in c.get_parents() if not p.rendered ] :
-                pending.append(c)
-            else :
-                c.render( fd )
-        else :
-            c.render(fd)
+                if c not in pending : pending.append(c)
+                return
+        shown_branches.remove( current_branch )
+        c.render( fd )
+        if c in pending : pending.remove( c )
+        for target in c.forks :
+            if target.branch not in shown_branches :
+                shown_branches.append( target.branch , fd , current_branch )
+            if target not in pending :
+                pending.append( target )
 
 def chrono_plot ( repo , fd=sys.stdout) :
     """Assumes that commits are properly ordered, so just the commit list is given"""
