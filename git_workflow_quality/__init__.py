@@ -727,3 +727,8 @@ class Repository ( dict ) :
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
 
+    for b in self.branches:
+        if b.end().child :
+            b.end().forks.append( b.end().child )
+            b.end().child = None
+
