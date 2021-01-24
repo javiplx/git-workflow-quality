@@ -172,10 +172,10 @@ class Branch ( list ) :
             return True
         return False
 
-    def ancestry ( self , commit ) :
-        if commit.branch != self : return
-        child = commit
-        commit = commit.parent
+    def ancestry ( self ) :
+        assert len(self) == 1
+        child = self[0]
+        commit = child.parent
         while commit :
             if commit.branch :
                 if not self._primary :
@@ -186,7 +186,7 @@ class Branch ( list ) :
                     break
             commit.set_branch( self , child )
             child = commit
-            commit = commit.parent
+            commit = child.parent
 
     def append ( self , commit ) :
         if commit.branch :
@@ -664,9 +664,7 @@ class Repository ( dict ) :
             assert len(b) == 1
             self[sha].branch = None
             self.branches.remove(b)
-            branches.remove((c,b))
         branch = self.new_branch(branchname)
-        branches.append( ( self[sha] , branch ) )
         self[sha].set_branch( branch )
 
     for branch in self.branches :
@@ -682,7 +680,6 @@ class Repository ( dict ) :
             if not c.branch :
                 n += 1
                 branch = self.new_branch("removed %s" % n)
-                branches.append( ( c , branch ) )
                 c.set_branch( branch , commit )
             elif commit not in c.get_childs() :
                 c.forks.append( commit )
@@ -692,10 +689,12 @@ class Repository ( dict ) :
 
     print
     cnt = 1
-    for c,branch in branches :
-        os.sys.stdout.write( "%2d %% ancestry, branch: %-40s\r" % ( 100*cnt/len(branches) , str(branch)[:40] ) )
+    for branch in self.branches :
+        os.sys.stdout.write( "%2d %% ancestry, branch: %-40s\r" % ( 100*cnt/len(self.branches) , str(branch)[:40] ) )
         cnt += 1
-        branch.ancestry( c )
+        if branch :
+            branch.ancestry()
+    self.branches[:] = [b for b in self.branches if b]
     print
 
     self.order.reverse()
@@ -704,17 +703,13 @@ class Repository ( dict ) :
             n += 1
             branch = self.new_branch("orphan %s" % n, True)
             c.set_branch( branch )
-            branch.ancestry( c )
+            branch.ancestry()
     self.order.reverse()
 
-    n , m = 0 , 0
+    n = 0
     # Remove items within the loop is not safe
     __branches = [ branch for branch in self.branches ]
     for branch in __branches :
-        if len(branch) == 0 :
-            self.branches.remove(branch)
-            m += 1
-            continue
         source = branch.begin().parent
         if not source : continue
         if ( source.child and source.child.branch == branch ) or \
@@ -730,6 +725,4 @@ class Repository ( dict ) :
         branch.name = branch.picknames()[0]
     if n :
         print "WARNING : %d branches removed by concatenation with parents" % n
-    if m :
-        print "ERROR : generated %d empty branches" % m
 
