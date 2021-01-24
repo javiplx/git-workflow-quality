@@ -22,6 +22,16 @@ class Commit :
         self.forks = []
         self.rendered = False
 
+    def set_params ( self , line , repository ) :
+        self.author_date = int(line[0])
+        self.committer_date = int(line[1])
+        if len(line) > 2 :
+            self.parent = repository[line[2]]
+            if len(line) > 3 :
+                self.parents = [ repository[sha1] for sha1 in line[3].split() ]
+                if len(self.parents) > 1 :
+                    raise Exception( "Octopus merges on %s from %s not handled" % ( self.sha , ", ".join([c.sha for c in self.parents]) ) )
+
     def set_branch ( self , branch , child=None ) :
         if branch <= self.branch :
             # self.branch has a higher weight respect to branch
@@ -416,7 +426,7 @@ class Repository ( dict ) :
     line = cmd.stdout.readline()
     while line[:-1] :
         sha , params = line[:-1].strip('"').split(None, 1)
-        self.set_params( sha , params.split(None, 4))
+        self[sha].set_params( params.split(None, 4) , self )
         if self[sha].parent and self[sha].parent not in self.order :
             raise Exception( "Incorrect input ordering" )
         self.order.append( self[sha] )
@@ -444,16 +454,6 @@ class Repository ( dict ) :
                 commit.parents = ()
 
     self.set_childs()
-
-  def set_params ( self , sha , line ) :
-      self[sha].author_date = int(line[0])
-      self[sha].committer_date = int(line[1])
-      if len(line) > 2 :
-          self[sha].parent = self[line[2]]
-          if len(line) > 3 :
-              self[sha].parents = [ self[sha1] for sha1 in line[3].split() ]
-              if len(self[sha].parents) > 1 :
-                  raise Exception( "Octopus merges on %s from %s not handled" % ( self[sha].sha , ", ".join([c.sha for c in self[sha].parents]) ) )
 
   def get_branch ( self , branchname ) :
       for branch in self.branches :
