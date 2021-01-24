@@ -100,6 +100,7 @@ class Branch ( list ) :
         list.__init__( self )
         self._primary = primary
         self.altnames = [ self.name ]
+        self.real = False
 
     def altname( self , names ) :
         for name in names :
