@@ -114,6 +114,7 @@ def forward_plot ( repo , c , pending , fd=sys.stdout ) :
                 pending.append(c)
                 break
             else :
+                if c in pending : pending.remove(c)
                 c.render( fd )
         else :
             if first :
