@@ -1,4 +1,3 @@
-
 # git workflow quality
 
 This work pretends to stablish a way to get a numeric value for the quality of a git workflow.  
